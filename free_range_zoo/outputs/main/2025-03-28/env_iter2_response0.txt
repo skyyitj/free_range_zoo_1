@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 1, in <module>
+    from free_range_zoo.envs import wildfire_v0
+ModuleNotFoundError: No module named 'free_range_zoo'

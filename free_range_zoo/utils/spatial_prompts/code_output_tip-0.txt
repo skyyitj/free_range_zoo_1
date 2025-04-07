@@ -1,0 +1,9 @@
+The input for the sub-goal validation function should include the 3D coordinates of the objects associated with the sub-goal.
+
+The output of the sub-goal validation function should be a boolean value indicating whether the sub-goal has been accomplished.
+
+Here are some useful suggestions for coding the sub-goal validation function:
+(1) Create a separate validation function for each sub-goal.
+(2) It may be beneficial to compute the distance between objects.
+(3) Taking into account the actual dimensions of the objects might be advantageous.
+(4) Ensure that each input variable's type is accurately defined; for instance, a float input variable should not be labeled as torch.Tensor.

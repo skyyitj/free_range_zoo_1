@@ -1,0 +1,26 @@
+class GenerateAgent(Agent):
+    def __init__(self, *args, **kwargs) -> None:
+            """
+            Args:
+                agent_name: str - Name of the subject agent
+                parallel_envs: int - Number of parallel environments to operate on
+            """
+            super().__init__(*args, **kwargs)
+            self.actions = torch.zeros((self.parallel_envs, 2), dtype=torch.int32)
+
+    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
+        """
+        Return a list of actions, one for each parallel environment.
+        Args:
+            action_space: free_range_rust.Space - Current action space available to the agent.
+        Returns:
+            List[List[int]] - List of actions, one for each parallel environment.
+        """
+
+    def observe(self, observation: Dict[str, Any]) -> None:
+        """
+        Observe the environment.
+        Args:
+            observation: Dict[str, Any] - Current observation from the environment.
+        """
+

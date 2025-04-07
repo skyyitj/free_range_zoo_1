@@ -1,0 +1,3 @@
+As a code engineer, your job is to create validation functions for each sub-goal based on the given descriptions.
+
+Your task is to write validation functions using the 3D world positions of the objects mentioned in the sub-goals as inputs. As an example, the validation function signature can be: {task_reward_signature_string}

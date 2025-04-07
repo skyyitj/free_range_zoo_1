@@ -1,0 +1,1 @@
+The Python environment is {task_obs_code_string}. Write a validation function and create check functions for each sub-goal for {subgoal_description}.

@@ -1,0 +1,31 @@
+/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+Traceback (most recent call last):
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 79, in <module>
+    next_observations, rewards, terminations, truncations, infos = env.step(agent_actions)
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/wrappers/wrapper_util.py", line 251, in step
+    observations, rewards, terminations, truncations, infos = super().step(actions)
+                                                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/pettingzoo/utils/wrappers/base_parallel.py", line 34, in step
+    return self.env.step(actions)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/utils/conversions.py", line 88, in step
+    self.aec_env.step(actions[agent])
+  File "/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/pettingzoo/utils/wrappers/order_enforcing.py", line 96, in step
+    super().step(action)
+  File "/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/pettingzoo/utils/wrappers/base.py", line 47, in step
+    self.env.step(action)
+  File "/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/utils/env.py", line 200, in step
+    rewards, terminations, infos = self.step_environment()
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/env/wildfire.py", line 368, in step_environment
+    refills[agent_index] = agent_actions[:, 1] == -1
+                           ~~~~~~~~~~~~~^^^^^^
+TypeError: list indices must be integers or slices, not tuple

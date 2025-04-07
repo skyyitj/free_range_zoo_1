@@ -1,0 +1,5 @@
+You are a code engineer tasked with writing validation functions to determine as accurately as possible whether each sub-goal in the task is satisfied.
+
+Your objective is to write validation functions for each sub-goal according to the descriptions provided in the text.
+
+Your validation functions should use the 3D world positions of the objects mentioned in the sub-goals as inputs. For example, the validation function signature for the sub-goal "red block in the red bowl" can be: `{task_reward_signature_string}`.
