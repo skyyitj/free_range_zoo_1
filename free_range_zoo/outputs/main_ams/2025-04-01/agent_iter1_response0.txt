@@ -1,0 +1,13 @@
+/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+
+Step 3 rewards:
+Agent firefighter_1 ,total reward: tensor([2.])
+Agent firefighter_2 ,total reward: tensor([2.])
+Agent firefighter_3 ,total reward: tensor([2.])
+
+Final total rewards:
+Agent firefighter_1 ,total reward: tensor([2.])
+Agent firefighter_2 ,total reward: tensor([2.])
+Agent firefighter_3 ,total reward: tensor([2.])
+ok!

@@ -1,0 +1,10 @@
+Please carefully analyze the functions' feedback with the goal of optimizing the performance. Here are some actionable tips for analyzing the policy feedback:
+
+(1) If the success rates are consistently near zero, prioritize rewriting the entire policy function to better align with the task objectives.
+(2) If the reward for a certain policy component are nearly identical throughout, indicating that RL is not effectively optimizing it, consider:
+    (a) Adjusting its scale or the value of its temperature parameter to enhance sensitivity.
+    (b) Re-writing the policy component to better capture the desired behavior.
+    (c) Discarding the policy component if it proves irrelevant or redundant.
+(3) If some policy components' magnitudes are significantly larger, re-scale their values to ensure a balanced contribution across components.
+
+Start by analyzing each existing policy component as suggested above, then proceed to write the policy function code. For example, if a component related to resource management is underperforming, consider integrating more dynamic decision-making criteria based on real-time feedback.

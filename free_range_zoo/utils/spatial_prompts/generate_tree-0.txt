@@ -1,0 +1,13 @@
+As a JSON engineer, your task is to create a goal hierarchy in JSON format, where each node represents a specific sub-goal required to complete the main task successfully. Follow these guidelines when constructing the goal hierarchy:
+
+1) Root Keys: Define the root keys as "task_name", "task-related objects", "description", and "subgoals".
+
+2) Subgoals Names: Under "subgoals", list the names of the sub-goals. These names will also serve as the function names used to verify if each subgoal is satisfied.
+
+3) Function Arguments: For each subgoal, specify the keyword arguments (kwargs) for its corresponding function by using the names of the related objects as input variable names. This ensures that the positions of these objects are passed to the validation function through these variable names.
+
+4) Prerequisites: If a subgoal has prerequisites, include them within the subgoal under "prerequisites". There are two types:
+
+   a) Concurrent: When two subgoals must be achieved simultaneously, usually because they represent the states of different objects. For example, "drawer_open" is a concurrent prerequisite for "red_block_in_gripper", meaning both must be satisfied at the same time.
+
+   b) Sequential: When one subgoal must be completed before another, but they don't need to be achieved concurrently, typically because they represent the state of the same object. For example, "red_block_in_gripper" is a sequential prerequisite for "red_block_in_drawer"; these subgoals cannot be satisfied at the same time.
