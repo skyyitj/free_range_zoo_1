@@ -3,7 +3,8 @@ from typing import List, Dict, Any
 import torch
 import free_range_rust
 from free_range_zoo.utils.agent import Agent
-
+from math import sqrt
+from typing import Tuple, List
 
 class GeneratedAgent(Agent):
     """Agent that always fights the strongest available fire."""
@@ -42,13 +43,14 @@ class GeneratedAgent(Agent):
             fire_obs = self.observation['tasks'][batch].cpu().numpy()
             fire_pos = fire_obs[:, 0:2].tolist()
             fire_levels = fire_obs[:, 2]
-            fire_intensities = fire_obs[:, 3]
+            fire_intensities = fire_obs[:, 3]  
 
             other_agents_obs = self.observation['others'][batch].cpu().numpy()
             other_agents_pos = other_agents_obs.tolist()
 
+            # valid_action_space = self.t_mapping[batch]
 
-            maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos, fire_pos, fire_levels, fire_intensities, valid_tasks)
+            maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos, fire_pos, fire_levels, fire_intensities, valid_action_space)
 
             if maximum_index == -1:  # 若maximum_index没有更新，则说明在action_space中没有可扑灭的火焰
                 self.actions[batch].fill_(-1)
@@ -75,4 +77,5 @@ class GeneratedAgent(Agent):
             self.t_mapping = self.t_mapping['agent_action_mapping']
         except Exception as e:  # 捕获所有异常
             self.observation = observation
+
 
