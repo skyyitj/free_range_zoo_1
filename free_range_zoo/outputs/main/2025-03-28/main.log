@@ -1,0 +1,1370 @@
+[2025-03-28 05:30:16,216][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-28 05:30:16,216][root][INFO] - Task: wildfire
+[2025-03-28 05:30:16,216][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-28 05:30:16,216][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-28 05:30:16,217][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-28 05:30:16,217][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is @dataclass
+class WildfireObservation:
+    """野火环境观察表示
+
+    属性:
+        fires: 野火存在矩阵 <y, x>，0表示无火，1表示有火
+        intensity: 野火强度矩阵 <y, x>，范围[0,1]
+        fuel: 燃料剩余矩阵 <y, x>，范围[0,100]
+        agents: 智能体位置矩阵 <agent, 2>，每个元素为(y, x)坐标
+        suppressants: 智能体灭火剂矩阵 <agent, 1>，范围[0,100]
+        capacity: 智能体最大灭火剂矩阵 <agent, 1>，范围[0,100]
+        equipment: 智能体设备状态矩阵 <agent, 1>，范围[0,1]
+        attack_counts: 每个格子的灭火剂使用次数 <y, x>，范围[0,100]
+    """
+    fires: np.ndarray
+    intensity: np.ndarray
+    fuel: np.ndarray
+    agents: np.ndarray
+    suppressants: np.ndarray
+    capacity: np.ndarray
+    equipment: np.ndarray
+    attack_counts: np.ndarray
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """将观察转换为字典格式"""
+        return {
+            'fires': self.fires,
+            'intensity': self.intensity,
+            'fuel': self.fuel,
+            'agents': self.agents,
+            'suppressants': self.suppressants,
+            'capacity': self.capacity,
+            'equipment': self.equipment,
+            'attack_counts': self.attack_counts
+        }
+
+
+def build_observation_space(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> spaces.Dict:
+    """构建观察空间
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        gymnasium观察空间字典
+    """
+    obs_dict = {
+        'fires': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'intensity': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'fuel': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32),
+        'agents': spaces.Box(low=0, high=max(grid_size), shape=(num_agents, 2), dtype=np.float32),
+        'attack_counts': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32)
+    }
+
+    if include_power:
+        obs_dict.update({
+            'power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32),
+            'max_power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    if include_suppressant:
+        obs_dict.update({
+            'suppressants': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32),
+            'capacity': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    return spaces.Dict(obs_dict)
+
+
+def get_observation_space_size(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> int:
+    """获取观察空间大小
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        观察空间的总维度
+    """
+    base_size = grid_size[0] * grid_size[1] * 4  # fires, intensity, fuel, attack_counts
+    agent_size = num_agents * 2  # agents position
+
+    if include_power:
+        agent_size += num_agents * 2  # power and max_power
+
+    if include_suppressant:
+        agent_size += num_agents * 2  # suppressants and capacity
+
+    return base_size + agent_size
+
+
+def compute_observations(
+        state: WildfireObservation,
+        agent_id: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> Dict[str, np.ndarray]:
+    """计算智能体的观察
+
+    参数:
+        state: 环境状态
+        agent_id: 智能体ID
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        智能体的观察字典
+    """
+    obs = {
+        'fires': state.fires,
+        'intensity': state.intensity,
+        'fuel': state.fuel,
+        'agents': state.agents,
+        'attack_counts': state.attack_counts
+    }
+
+    if include_power:
+        obs.update({
+            'power': state.power,
+            'max_power': state.max_power
+        })
+
+    if include_suppressant:
+        obs.update({
+            'suppressants': state.suppressants,
+            'capacity': state.capacity
+        })
+
+    return obs
+
+
+def normalize_observation(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """标准化观察值到[0,1]范围
+
+    参数:
+        obs: 原始观察字典
+
+    返回:
+        标准化后的观察字典
+    """
+    normalized = {}
+
+    for key, value in obs.items():
+        if key in ['fires', 'intensity', 'power', 'max_power', 'equipment']:
+            normalized[key] = value  # 已经在[0,1]范围内
+        elif key in ['fuel', 'suppressants', 'capacity', 'attack_counts']:
+            normalized[key] = value / 100.0  # 归一化到[0,1]
+        elif key == 'agents':
+            normalized[key] = value / max(value.shape)  # 归一化坐标
+        else:
+            normalized[key] = value
+
+    return normalized
+
+
+def create_empty_observation(grid_size: Tuple[int, int], num_agents: int) -> WildfireObservation:
+    """创建空的观察对象
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+
+    返回:
+        初始化的空观察对象
+    """
+    return WildfireObservation(
+        fires=np.zeros(grid_size, dtype=np.float32),
+        intensity=np.zeros(grid_size, dtype=np.float32),
+        fuel=np.full(grid_size, 100.0, dtype=np.float32),
+        agents=np.zeros((num_agents, 2), dtype=np.float32),
+        suppressants=np.zeros((num_agents, 1), dtype=np.float32),
+        capacity=np.zeros((num_agents, 1), dtype=np.float32),
+        equipment=np.ones((num_agents, 1), dtype=np.float32),
+        attack_counts=np.zeros(grid_size, dtype=np.float32)
+    )
+
+
+class Env:
+    def compute_observations(self, agent_id):
+        agent = self.agent_list[agent_id]
+
+        # 获取自身观察
+        self_obs = self._get_self_observation(agent)
+
+        # 获取其他智能体观察
+        others_obs = self._get_others_observation(agent_id)
+
+        # 获取野火任务观察
+        tasks_obs = self._get_tasks_observation()
+
+        # 组合所有观察
+        observation = {
+            'self': self_obs,
+            'others': others_obs,
+            'tasks': tasks_obs
+        }
+
+        return observation
+
+    def _get_self_observation(self, agent):
+        """获取自身观察"""
+        # 位置坐标
+        pos = agent.final_pos
+
+        # 根据配置决定是否包含能量和灭火剂
+        obs = [pos[0], pos[1]]  # 基础位置信息
+
+        if self.include_power:
+            obs.append(agent.power / self.max_power)  # 能量水平
+
+        if self.include_suppressant:
+            obs.append(agent.suppressant / self.max_suppressant)  # 灭火剂水平
+
+        return np.array(obs, dtype=np.float32)
+
+    def _get_others_observation(self, agent_id):
+        """获取其他智能体的观察"""
+        others_obs = []
+        for other_id in range(self.agent_n):
+            if other_id == agent_id:
+                continue
+            other_agent = self.agent_list[other_id]
+            other_obs = self._get_self_observation(other_agent)
+            others_obs.append(other_obs)
+        return tuple(others_obs)
+
+    def _get_tasks_observation(self):
+        """获取野火任务观察"""
+        tasks_obs = []
+        for fire_id in range(self.num_tasks):
+            fire = self.fire_list[fire_id]
+            # 野火观察包含：位置(y,x)、等级、强度
+            fire_obs = [
+                fire.position[0],  # y坐标
+                fire.position[1],  # x坐标
+                fire.level,  # 野火等级
+                fire.intensity  # 野火强度
+            ]
+            tasks_obs.append(np.array(fire_obs, dtype=np.float32))
+        return tuple(tasks_obs)
+
+    def pos2grid_xy(self, pos, global_horizon):
+        """将坐标转换为网格坐标"""
+        grid_x = int(pos[0] / self.coordx_max * global_horizon)
+        grid_y = int(pos[1] / self.coordy_max * global_horizon)
+        grid_xy = (grid_x, grid_y)
+        return grid_xy
+. Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-28 05:30:40,927][root][INFO] - Iteration 0: GPT Output:
+ The implication of the reward function is to motivate the agent to extinguish the wildfire as fast as possible while preserving its fuel as long as possible. Suppose the agent's suppressants are exhausted before the fire is extinguished, the agent has to move to the recharging station to refill the suppressants, which delays the firefighting effort. Hence, an efficient strategy would both quickly extinguish the fire and save the suppressants.
+
+A proposed reward function could be:
+    
+```python 
+import numpy as np
+
+def compute_reward(observation: WildfireObservation, action: np.ndarray) -> Tuple[np.array, Dict[str, np.array]]:
+
+    # constants for reward adjustment
+    SUCCESS_REWARD = 100.0
+    FAILURE_REWARD = -100.0
+    SUPPRESSANT_USAGE_PENALTY = -0.5
+    FIRE_INTENSITY_PENALTY = -1.0
+    ATTACK_PENALTY = -0.1
+
+    reward = 0.0
+    reward_components = {}
+
+    # calculate fires left
+    fires_left = np.sum(observation.fires * observation.intensity)
+
+    if fires_left > 0:
+        # Still some fires left
+        # calculate reward based on the reduction of fire and the usage of the suppressants
+        suppressants_usage_reward = SUPPRESSANT_USAGE_PENALTY * np.sum(action)
+        fire_intensity_reward = FIRE_INTENSITY_PENALTY * np.sum(observation.fires * observation.intensity)
+        attack_count_reward = ATTACK_PENALTY * np.sum(observation.attack_counts)
+
+        reward = suppressants_usage_reward + fire_intensity_reward + attack_count_reward
+        reward_components = {"suppressants_usage_reward": suppressants_usage_reward, 
+                             "fire_intensity_reward": fire_intensity_reward,
+                             "attack_count_reward": attack_count_reward}
+
+    else:
+        # Fires extinguished
+        reward = SUCCESS_REWARD
+        reward_components = {"success_reward": SUCCESS_REWARD}
+
+    return reward, reward_components
+```
+
+In this reward function, we have three elements to consider:
+
+    1. Penalties: We assign penalties for suppressant usage, fire intensity, and attack count. This incentivizes the agent to extinguish the fires quickly and effectively without wasting suppressants. A higher penalty is assigned to the fire intensity to encourage the agent to prioritize extinguishing fires.
+    
+    2. Success Reward: If all the fire has been extinguished (i.e., no fire exists in the environment), the agent will be rewarded with `SUCCESS_REWARD`. This is to encourage the agent to finish the task as quickly as possible.
+    
+    3. Failure Reward: If the agent fails to extinguish the fire (i.e., all the suppressants have been used up), then it gets penalized with `FAILURE_REWARD`. This is to motivate the agent to effectively use its resources.
+
+[2025-03-28 05:30:40,927][root][INFO] - Iteration 0: Prompt Tokens: 2701, Completion Tokens: 2156, Total Tokens: 4857
+[2025-03-28 05:30:40,927][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-28 05:30:40,938][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-28 05:30:40,968][root][INFO] - Iteration 1: Generating 1 samples with gpt-4-0613
+[2025-03-28 05:30:40,968][root][INFO] - Iteration 1: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-28 05:30:40,969][root][INFO] - Iteration 1: GPT User Input:
+ The Python environment is @dataclass
+class WildfireObservation:
+    """野火环境观察表示
+
+    属性:
+        fires: 野火存在矩阵 <y, x>，0表示无火，1表示有火
+        intensity: 野火强度矩阵 <y, x>，范围[0,1]
+        fuel: 燃料剩余矩阵 <y, x>，范围[0,100]
+        agents: 智能体位置矩阵 <agent, 2>，每个元素为(y, x)坐标
+        suppressants: 智能体灭火剂矩阵 <agent, 1>，范围[0,100]
+        capacity: 智能体最大灭火剂矩阵 <agent, 1>，范围[0,100]
+        equipment: 智能体设备状态矩阵 <agent, 1>，范围[0,1]
+        attack_counts: 每个格子的灭火剂使用次数 <y, x>，范围[0,100]
+    """
+    fires: np.ndarray
+    intensity: np.ndarray
+    fuel: np.ndarray
+    agents: np.ndarray
+    suppressants: np.ndarray
+    capacity: np.ndarray
+    equipment: np.ndarray
+    attack_counts: np.ndarray
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """将观察转换为字典格式"""
+        return {
+            'fires': self.fires,
+            'intensity': self.intensity,
+            'fuel': self.fuel,
+            'agents': self.agents,
+            'suppressants': self.suppressants,
+            'capacity': self.capacity,
+            'equipment': self.equipment,
+            'attack_counts': self.attack_counts
+        }
+
+
+def build_observation_space(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> spaces.Dict:
+    """构建观察空间
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        gymnasium观察空间字典
+    """
+    obs_dict = {
+        'fires': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'intensity': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'fuel': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32),
+        'agents': spaces.Box(low=0, high=max(grid_size), shape=(num_agents, 2), dtype=np.float32),
+        'attack_counts': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32)
+    }
+
+    if include_power:
+        obs_dict.update({
+            'power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32),
+            'max_power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    if include_suppressant:
+        obs_dict.update({
+            'suppressants': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32),
+            'capacity': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    return spaces.Dict(obs_dict)
+
+
+def get_observation_space_size(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> int:
+    """获取观察空间大小
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        观察空间的总维度
+    """
+    base_size = grid_size[0] * grid_size[1] * 4  # fires, intensity, fuel, attack_counts
+    agent_size = num_agents * 2  # agents position
+
+    if include_power:
+        agent_size += num_agents * 2  # power and max_power
+
+    if include_suppressant:
+        agent_size += num_agents * 2  # suppressants and capacity
+
+    return base_size + agent_size
+
+
+def compute_observations(
+        state: WildfireObservation,
+        agent_id: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> Dict[str, np.ndarray]:
+    """计算智能体的观察
+
+    参数:
+        state: 环境状态
+        agent_id: 智能体ID
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        智能体的观察字典
+    """
+    obs = {
+        'fires': state.fires,
+        'intensity': state.intensity,
+        'fuel': state.fuel,
+        'agents': state.agents,
+        'attack_counts': state.attack_counts
+    }
+
+    if include_power:
+        obs.update({
+            'power': state.power,
+            'max_power': state.max_power
+        })
+
+    if include_suppressant:
+        obs.update({
+            'suppressants': state.suppressants,
+            'capacity': state.capacity
+        })
+
+    return obs
+
+
+def normalize_observation(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """标准化观察值到[0,1]范围
+
+    参数:
+        obs: 原始观察字典
+
+    返回:
+        标准化后的观察字典
+    """
+    normalized = {}
+
+    for key, value in obs.items():
+        if key in ['fires', 'intensity', 'power', 'max_power', 'equipment']:
+            normalized[key] = value  # 已经在[0,1]范围内
+        elif key in ['fuel', 'suppressants', 'capacity', 'attack_counts']:
+            normalized[key] = value / 100.0  # 归一化到[0,1]
+        elif key == 'agents':
+            normalized[key] = value / max(value.shape)  # 归一化坐标
+        else:
+            normalized[key] = value
+
+    return normalized
+
+
+def create_empty_observation(grid_size: Tuple[int, int], num_agents: int) -> WildfireObservation:
+    """创建空的观察对象
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+
+    返回:
+        初始化的空观察对象
+    """
+    return WildfireObservation(
+        fires=np.zeros(grid_size, dtype=np.float32),
+        intensity=np.zeros(grid_size, dtype=np.float32),
+        fuel=np.full(grid_size, 100.0, dtype=np.float32),
+        agents=np.zeros((num_agents, 2), dtype=np.float32),
+        suppressants=np.zeros((num_agents, 1), dtype=np.float32),
+        capacity=np.zeros((num_agents, 1), dtype=np.float32),
+        equipment=np.ones((num_agents, 1), dtype=np.float32),
+        attack_counts=np.zeros(grid_size, dtype=np.float32)
+    )
+
+
+class Env:
+    def compute_observations(self, agent_id):
+        agent = self.agent_list[agent_id]
+
+        # 获取自身观察
+        self_obs = self._get_self_observation(agent)
+
+        # 获取其他智能体观察
+        others_obs = self._get_others_observation(agent_id)
+
+        # 获取野火任务观察
+        tasks_obs = self._get_tasks_observation()
+
+        # 组合所有观察
+        observation = {
+            'self': self_obs,
+            'others': others_obs,
+            'tasks': tasks_obs
+        }
+
+        return observation
+
+    def _get_self_observation(self, agent):
+        """获取自身观察"""
+        # 位置坐标
+        pos = agent.final_pos
+
+        # 根据配置决定是否包含能量和灭火剂
+        obs = [pos[0], pos[1]]  # 基础位置信息
+
+        if self.include_power:
+            obs.append(agent.power / self.max_power)  # 能量水平
+
+        if self.include_suppressant:
+            obs.append(agent.suppressant / self.max_suppressant)  # 灭火剂水平
+
+        return np.array(obs, dtype=np.float32)
+
+    def _get_others_observation(self, agent_id):
+        """获取其他智能体的观察"""
+        others_obs = []
+        for other_id in range(self.agent_n):
+            if other_id == agent_id:
+                continue
+            other_agent = self.agent_list[other_id]
+            other_obs = self._get_self_observation(other_agent)
+            others_obs.append(other_obs)
+        return tuple(others_obs)
+
+    def _get_tasks_observation(self):
+        """获取野火任务观察"""
+        tasks_obs = []
+        for fire_id in range(self.num_tasks):
+            fire = self.fire_list[fire_id]
+            # 野火观察包含：位置(y,x)、等级、强度
+            fire_obs = [
+                fire.position[0],  # y坐标
+                fire.position[1],  # x坐标
+                fire.level,  # 野火等级
+                fire.intensity  # 野火强度
+            ]
+            tasks_obs.append(np.array(fire_obs, dtype=np.float32))
+        return tuple(tasks_obs)
+
+    def pos2grid_xy(self, pos, global_horizon):
+        """将坐标转换为网格坐标"""
+        grid_x = int(pos[0] / self.coordx_max * global_horizon)
+        grid_y = int(pos[1] / self.coordy_max * global_horizon)
+        grid_xy = (grid_x, grid_y)
+        return grid_xy
+. Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-28 05:30:40,970][root][INFO] - Iteration 1: GPT Output:
+ The implication of the reward function is to motivate the agent to extinguish the wildfire as fast as possible while preserving its fuel as long as possible. Suppose the agent's suppressants are exhausted before the fire is extinguished, the agent has to move to the recharging station to refill the suppressants, which delays the firefighting effort. Hence, an efficient strategy would both quickly extinguish the fire and save the suppressants.
+
+A proposed reward function could be:
+    
+```python 
+import numpy as np
+
+def compute_reward(observation: WildfireObservation, action: np.ndarray) -> Tuple[np.array, Dict[str, np.array]]:
+
+    # constants for reward adjustment
+    SUCCESS_REWARD = 100.0
+    FAILURE_REWARD = -100.0
+    SUPPRESSANT_USAGE_PENALTY = -0.5
+    FIRE_INTENSITY_PENALTY = -1.0
+    ATTACK_PENALTY = -0.1
+
+    reward = 0.0
+    reward_components = {}
+
+    # calculate fires left
+    fires_left = np.sum(observation.fires * observation.intensity)
+
+    if fires_left > 0:
+        # Still some fires left
+        # calculate reward based on the reduction of fire and the usage of the suppressants
+        suppressants_usage_reward = SUPPRESSANT_USAGE_PENALTY * np.sum(action)
+        fire_intensity_reward = FIRE_INTENSITY_PENALTY * np.sum(observation.fires * observation.intensity)
+        attack_count_reward = ATTACK_PENALTY * np.sum(observation.attack_counts)
+
+        reward = suppressants_usage_reward + fire_intensity_reward + attack_count_reward
+        reward_components = {"suppressants_usage_reward": suppressants_usage_reward, 
+                             "fire_intensity_reward": fire_intensity_reward,
+                             "attack_count_reward": attack_count_reward}
+
+    else:
+        # Fires extinguished
+        reward = SUCCESS_REWARD
+        reward_components = {"success_reward": SUCCESS_REWARD}
+
+    return reward, reward_components
+```
+
+In this reward function, we have three elements to consider:
+
+    1. Penalties: We assign penalties for suppressant usage, fire intensity, and attack count. This incentivizes the agent to extinguish the fires quickly and effectively without wasting suppressants. A higher penalty is assigned to the fire intensity to encourage the agent to prioritize extinguishing fires.
+    
+    2. Success Reward: If all the fire has been extinguished (i.e., no fire exists in the environment), the agent will be rewarded with `SUCCESS_REWARD`. This is to encourage the agent to finish the task as quickly as possible.
+    
+    3. Failure Reward: If the agent fails to extinguish the fire (i.e., all the suppressants have been used up), then it gets penalized with `FAILURE_REWARD`. This is to motivate the agent to effectively use its resources.
+
+[2025-03-28 05:30:40,970][root][INFO] - Iteration 1: Prompt Tokens: 2701, Completion Tokens: 2156, Total Tokens: 4857
+[2025-03-28 05:30:40,971][root][INFO] - Iteration 1: Processing Code Run 0
+[2025-03-28 05:30:40,981][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-03-28 05:30:41,011][root][INFO] - Iteration 2: Generating 1 samples with gpt-4-0613
+[2025-03-28 05:30:41,012][root][INFO] - Iteration 2: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-28 05:30:41,012][root][INFO] - Iteration 2: GPT User Input:
+ The Python environment is @dataclass
+class WildfireObservation:
+    """野火环境观察表示
+
+    属性:
+        fires: 野火存在矩阵 <y, x>，0表示无火，1表示有火
+        intensity: 野火强度矩阵 <y, x>，范围[0,1]
+        fuel: 燃料剩余矩阵 <y, x>，范围[0,100]
+        agents: 智能体位置矩阵 <agent, 2>，每个元素为(y, x)坐标
+        suppressants: 智能体灭火剂矩阵 <agent, 1>，范围[0,100]
+        capacity: 智能体最大灭火剂矩阵 <agent, 1>，范围[0,100]
+        equipment: 智能体设备状态矩阵 <agent, 1>，范围[0,1]
+        attack_counts: 每个格子的灭火剂使用次数 <y, x>，范围[0,100]
+    """
+    fires: np.ndarray
+    intensity: np.ndarray
+    fuel: np.ndarray
+    agents: np.ndarray
+    suppressants: np.ndarray
+    capacity: np.ndarray
+    equipment: np.ndarray
+    attack_counts: np.ndarray
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """将观察转换为字典格式"""
+        return {
+            'fires': self.fires,
+            'intensity': self.intensity,
+            'fuel': self.fuel,
+            'agents': self.agents,
+            'suppressants': self.suppressants,
+            'capacity': self.capacity,
+            'equipment': self.equipment,
+            'attack_counts': self.attack_counts
+        }
+
+
+def build_observation_space(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> spaces.Dict:
+    """构建观察空间
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        gymnasium观察空间字典
+    """
+    obs_dict = {
+        'fires': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'intensity': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'fuel': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32),
+        'agents': spaces.Box(low=0, high=max(grid_size), shape=(num_agents, 2), dtype=np.float32),
+        'attack_counts': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32)
+    }
+
+    if include_power:
+        obs_dict.update({
+            'power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32),
+            'max_power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    if include_suppressant:
+        obs_dict.update({
+            'suppressants': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32),
+            'capacity': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    return spaces.Dict(obs_dict)
+
+
+def get_observation_space_size(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> int:
+    """获取观察空间大小
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        观察空间的总维度
+    """
+    base_size = grid_size[0] * grid_size[1] * 4  # fires, intensity, fuel, attack_counts
+    agent_size = num_agents * 2  # agents position
+
+    if include_power:
+        agent_size += num_agents * 2  # power and max_power
+
+    if include_suppressant:
+        agent_size += num_agents * 2  # suppressants and capacity
+
+    return base_size + agent_size
+
+
+def compute_observations(
+        state: WildfireObservation,
+        agent_id: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> Dict[str, np.ndarray]:
+    """计算智能体的观察
+
+    参数:
+        state: 环境状态
+        agent_id: 智能体ID
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        智能体的观察字典
+    """
+    obs = {
+        'fires': state.fires,
+        'intensity': state.intensity,
+        'fuel': state.fuel,
+        'agents': state.agents,
+        'attack_counts': state.attack_counts
+    }
+
+    if include_power:
+        obs.update({
+            'power': state.power,
+            'max_power': state.max_power
+        })
+
+    if include_suppressant:
+        obs.update({
+            'suppressants': state.suppressants,
+            'capacity': state.capacity
+        })
+
+    return obs
+
+
+def normalize_observation(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """标准化观察值到[0,1]范围
+
+    参数:
+        obs: 原始观察字典
+
+    返回:
+        标准化后的观察字典
+    """
+    normalized = {}
+
+    for key, value in obs.items():
+        if key in ['fires', 'intensity', 'power', 'max_power', 'equipment']:
+            normalized[key] = value  # 已经在[0,1]范围内
+        elif key in ['fuel', 'suppressants', 'capacity', 'attack_counts']:
+            normalized[key] = value / 100.0  # 归一化到[0,1]
+        elif key == 'agents':
+            normalized[key] = value / max(value.shape)  # 归一化坐标
+        else:
+            normalized[key] = value
+
+    return normalized
+
+
+def create_empty_observation(grid_size: Tuple[int, int], num_agents: int) -> WildfireObservation:
+    """创建空的观察对象
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+
+    返回:
+        初始化的空观察对象
+    """
+    return WildfireObservation(
+        fires=np.zeros(grid_size, dtype=np.float32),
+        intensity=np.zeros(grid_size, dtype=np.float32),
+        fuel=np.full(grid_size, 100.0, dtype=np.float32),
+        agents=np.zeros((num_agents, 2), dtype=np.float32),
+        suppressants=np.zeros((num_agents, 1), dtype=np.float32),
+        capacity=np.zeros((num_agents, 1), dtype=np.float32),
+        equipment=np.ones((num_agents, 1), dtype=np.float32),
+        attack_counts=np.zeros(grid_size, dtype=np.float32)
+    )
+
+
+class Env:
+    def compute_observations(self, agent_id):
+        agent = self.agent_list[agent_id]
+
+        # 获取自身观察
+        self_obs = self._get_self_observation(agent)
+
+        # 获取其他智能体观察
+        others_obs = self._get_others_observation(agent_id)
+
+        # 获取野火任务观察
+        tasks_obs = self._get_tasks_observation()
+
+        # 组合所有观察
+        observation = {
+            'self': self_obs,
+            'others': others_obs,
+            'tasks': tasks_obs
+        }
+
+        return observation
+
+    def _get_self_observation(self, agent):
+        """获取自身观察"""
+        # 位置坐标
+        pos = agent.final_pos
+
+        # 根据配置决定是否包含能量和灭火剂
+        obs = [pos[0], pos[1]]  # 基础位置信息
+
+        if self.include_power:
+            obs.append(agent.power / self.max_power)  # 能量水平
+
+        if self.include_suppressant:
+            obs.append(agent.suppressant / self.max_suppressant)  # 灭火剂水平
+
+        return np.array(obs, dtype=np.float32)
+
+    def _get_others_observation(self, agent_id):
+        """获取其他智能体的观察"""
+        others_obs = []
+        for other_id in range(self.agent_n):
+            if other_id == agent_id:
+                continue
+            other_agent = self.agent_list[other_id]
+            other_obs = self._get_self_observation(other_agent)
+            others_obs.append(other_obs)
+        return tuple(others_obs)
+
+    def _get_tasks_observation(self):
+        """获取野火任务观察"""
+        tasks_obs = []
+        for fire_id in range(self.num_tasks):
+            fire = self.fire_list[fire_id]
+            # 野火观察包含：位置(y,x)、等级、强度
+            fire_obs = [
+                fire.position[0],  # y坐标
+                fire.position[1],  # x坐标
+                fire.level,  # 野火等级
+                fire.intensity  # 野火强度
+            ]
+            tasks_obs.append(np.array(fire_obs, dtype=np.float32))
+        return tuple(tasks_obs)
+
+    def pos2grid_xy(self, pos, global_horizon):
+        """将坐标转换为网格坐标"""
+        grid_x = int(pos[0] / self.coordx_max * global_horizon)
+        grid_y = int(pos[1] / self.coordy_max * global_horizon)
+        grid_xy = (grid_x, grid_y)
+        return grid_xy
+. Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-28 05:30:41,014][root][INFO] - Iteration 2: GPT Output:
+ The implication of the reward function is to motivate the agent to extinguish the wildfire as fast as possible while preserving its fuel as long as possible. Suppose the agent's suppressants are exhausted before the fire is extinguished, the agent has to move to the recharging station to refill the suppressants, which delays the firefighting effort. Hence, an efficient strategy would both quickly extinguish the fire and save the suppressants.
+
+A proposed reward function could be:
+    
+```python 
+import numpy as np
+
+def compute_reward(observation: WildfireObservation, action: np.ndarray) -> Tuple[np.array, Dict[str, np.array]]:
+
+    # constants for reward adjustment
+    SUCCESS_REWARD = 100.0
+    FAILURE_REWARD = -100.0
+    SUPPRESSANT_USAGE_PENALTY = -0.5
+    FIRE_INTENSITY_PENALTY = -1.0
+    ATTACK_PENALTY = -0.1
+
+    reward = 0.0
+    reward_components = {}
+
+    # calculate fires left
+    fires_left = np.sum(observation.fires * observation.intensity)
+
+    if fires_left > 0:
+        # Still some fires left
+        # calculate reward based on the reduction of fire and the usage of the suppressants
+        suppressants_usage_reward = SUPPRESSANT_USAGE_PENALTY * np.sum(action)
+        fire_intensity_reward = FIRE_INTENSITY_PENALTY * np.sum(observation.fires * observation.intensity)
+        attack_count_reward = ATTACK_PENALTY * np.sum(observation.attack_counts)
+
+        reward = suppressants_usage_reward + fire_intensity_reward + attack_count_reward
+        reward_components = {"suppressants_usage_reward": suppressants_usage_reward, 
+                             "fire_intensity_reward": fire_intensity_reward,
+                             "attack_count_reward": attack_count_reward}
+
+    else:
+        # Fires extinguished
+        reward = SUCCESS_REWARD
+        reward_components = {"success_reward": SUCCESS_REWARD}
+
+    return reward, reward_components
+```
+
+In this reward function, we have three elements to consider:
+
+    1. Penalties: We assign penalties for suppressant usage, fire intensity, and attack count. This incentivizes the agent to extinguish the fires quickly and effectively without wasting suppressants. A higher penalty is assigned to the fire intensity to encourage the agent to prioritize extinguishing fires.
+    
+    2. Success Reward: If all the fire has been extinguished (i.e., no fire exists in the environment), the agent will be rewarded with `SUCCESS_REWARD`. This is to encourage the agent to finish the task as quickly as possible.
+    
+    3. Failure Reward: If the agent fails to extinguish the fire (i.e., all the suppressants have been used up), then it gets penalized with `FAILURE_REWARD`. This is to motivate the agent to effectively use its resources.
+
+[2025-03-28 05:30:41,014][root][INFO] - Iteration 2: Prompt Tokens: 2701, Completion Tokens: 2156, Total Tokens: 4857
+[2025-03-28 05:30:41,014][root][INFO] - Iteration 2: Processing Code Run 0
+[2025-03-28 05:30:41,023][root][INFO] - Iteration 2: Code Run 0 successfully training!
+[2025-03-28 10:43:03,227][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-28 10:43:03,227][root][INFO] - Task: wildfire
+[2025-03-28 10:43:03,227][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-28 10:43:03,228][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-28 10:43:03,228][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-28 10:43:03,228][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is @dataclass
+class WildfireObservation:
+    """野火环境观察表示
+
+    属性:
+        fires: 野火存在矩阵 <y, x>，0表示无火，1表示有火
+        intensity: 野火强度矩阵 <y, x>，范围[0,1]
+        fuel: 燃料剩余矩阵 <y, x>，范围[0,100]
+        agents: 智能体位置矩阵 <agent, 2>，每个元素为(y, x)坐标
+        suppressants: 智能体灭火剂矩阵 <agent, 1>，范围[0,100]
+        capacity: 智能体最大灭火剂矩阵 <agent, 1>，范围[0,100]
+        equipment: 智能体设备状态矩阵 <agent, 1>，范围[0,1]
+        attack_counts: 每个格子的灭火剂使用次数 <y, x>，范围[0,100]
+    """
+    fires: np.ndarray
+    intensity: np.ndarray
+    fuel: np.ndarray
+    agents: np.ndarray
+    suppressants: np.ndarray
+    capacity: np.ndarray
+    equipment: np.ndarray
+    attack_counts: np.ndarray
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """将观察转换为字典格式"""
+        return {
+            'fires': self.fires,
+            'intensity': self.intensity,
+            'fuel': self.fuel,
+            'agents': self.agents,
+            'suppressants': self.suppressants,
+            'capacity': self.capacity,
+            'equipment': self.equipment,
+            'attack_counts': self.attack_counts
+        }
+
+
+def build_observation_space(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> spaces.Dict:
+    """构建观察空间
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        gymnasium观察空间字典
+    """
+    obs_dict = {
+        'fires': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'intensity': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'fuel': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32),
+        'agents': spaces.Box(low=0, high=max(grid_size), shape=(num_agents, 2), dtype=np.float32),
+        'attack_counts': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32)
+    }
+
+    if include_power:
+        obs_dict.update({
+            'power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32),
+            'max_power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    if include_suppressant:
+        obs_dict.update({
+            'suppressants': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32),
+            'capacity': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    return spaces.Dict(obs_dict)
+
+
+def get_observation_space_size(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> int:
+    """获取观察空间大小
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        观察空间的总维度
+    """
+    base_size = grid_size[0] * grid_size[1] * 4  # fires, intensity, fuel, attack_counts
+    agent_size = num_agents * 2  # agents position
+
+    if include_power:
+        agent_size += num_agents * 2  # power and max_power
+
+    if include_suppressant:
+        agent_size += num_agents * 2  # suppressants and capacity
+
+    return base_size + agent_size
+
+
+def compute_observations(
+        state: WildfireObservation,
+        agent_id: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> Dict[str, np.ndarray]:
+    """计算智能体的观察
+
+    参数:
+        state: 环境状态
+        agent_id: 智能体ID
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        智能体的观察字典
+    """
+    obs = {
+        'fires': state.fires,
+        'intensity': state.intensity,
+        'fuel': state.fuel,
+        'agents': state.agents,
+        'attack_counts': state.attack_counts
+    }
+
+    if include_power:
+        obs.update({
+            'power': state.power,
+            'max_power': state.max_power
+        })
+
+    if include_suppressant:
+        obs.update({
+            'suppressants': state.suppressants,
+            'capacity': state.capacity
+        })
+
+    return obs
+
+
+def normalize_observation(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """标准化观察值到[0,1]范围
+
+    参数:
+        obs: 原始观察字典
+
+    返回:
+        标准化后的观察字典
+    """
+    normalized = {}
+
+    for key, value in obs.items():
+        if key in ['fires', 'intensity', 'power', 'max_power', 'equipment']:
+            normalized[key] = value  # 已经在[0,1]范围内
+        elif key in ['fuel', 'suppressants', 'capacity', 'attack_counts']:
+            normalized[key] = value / 100.0  # 归一化到[0,1]
+        elif key == 'agents':
+            normalized[key] = value / max(value.shape)  # 归一化坐标
+        else:
+            normalized[key] = value
+
+    return normalized
+
+
+def create_empty_observation(grid_size: Tuple[int, int], num_agents: int) -> WildfireObservation:
+    """创建空的观察对象
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+
+    返回:
+        初始化的空观察对象
+    """
+    return WildfireObservation(
+        fires=np.zeros(grid_size, dtype=np.float32),
+        intensity=np.zeros(grid_size, dtype=np.float32),
+        fuel=np.full(grid_size, 100.0, dtype=np.float32),
+        agents=np.zeros((num_agents, 2), dtype=np.float32),
+        suppressants=np.zeros((num_agents, 1), dtype=np.float32),
+        capacity=np.zeros((num_agents, 1), dtype=np.float32),
+        equipment=np.ones((num_agents, 1), dtype=np.float32),
+        attack_counts=np.zeros(grid_size, dtype=np.float32)
+    )
+
+
+class Env:
+    def compute_observations(self, agent_id):
+        agent = self.agent_list[agent_id]
+
+        # 获取自身观察
+        self_obs = self._get_self_observation(agent)
+
+        # 获取其他智能体观察
+        others_obs = self._get_others_observation(agent_id)
+
+        # 获取野火任务观察
+        tasks_obs = self._get_tasks_observation()
+
+        # 组合所有观察
+        observation = {
+            'self': self_obs,
+            'others': others_obs,
+            'tasks': tasks_obs
+        }
+
+        return observation
+
+    def _get_self_observation(self, agent):
+        """获取自身观察"""
+        # 位置坐标
+        pos = agent.final_pos
+
+        # 根据配置决定是否包含能量和灭火剂
+        obs = [pos[0], pos[1]]  # 基础位置信息
+
+        if self.include_power:
+            obs.append(agent.power / self.max_power)  # 能量水平
+
+        if self.include_suppressant:
+            obs.append(agent.suppressant / self.max_suppressant)  # 灭火剂水平
+
+        return np.array(obs, dtype=np.float32)
+
+    def _get_others_observation(self, agent_id):
+        """获取其他智能体的观察"""
+        others_obs = []
+        for other_id in range(self.agent_n):
+            if other_id == agent_id:
+                continue
+            other_agent = self.agent_list[other_id]
+            other_obs = self._get_self_observation(other_agent)
+            others_obs.append(other_obs)
+        return tuple(others_obs)
+
+    def _get_tasks_observation(self):
+        """获取野火任务观察"""
+        tasks_obs = []
+        for fire_id in range(self.num_tasks):
+            fire = self.fire_list[fire_id]
+            # 野火观察包含：位置(y,x)、等级、强度
+            fire_obs = [
+                fire.position[0],  # y坐标
+                fire.position[1],  # x坐标
+                fire.level,  # 野火等级
+                fire.intensity  # 野火强度
+            ]
+            tasks_obs.append(np.array(fire_obs, dtype=np.float32))
+        return tuple(tasks_obs)
+
+    def pos2grid_xy(self, pos, global_horizon):
+        """将坐标转换为网格坐标"""
+        grid_x = int(pos[0] / self.coordx_max * global_horizon)
+        grid_y = int(pos[1] / self.coordy_max * global_horizon)
+        grid_xy = (grid_x, grid_y)
+        return grid_xy
+. Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-28 10:43:03,228][root][INFO] - Iteration 0: GPT Output:
+ The implication of the reward function is to motivate the agent to extinguish the wildfire as fast as possible while preserving its fuel as long as possible. Suppose the agent's suppressants are exhausted before the fire is extinguished, the agent has to move to the recharging station to refill the suppressants, which delays the firefighting effort. Hence, an efficient strategy would both quickly extinguish the fire and save the suppressants.
+
+A proposed reward function could be:
+    
+```python 
+import numpy as np
+
+def compute_reward(observation: WildfireObservation, action: np.ndarray) -> Tuple[np.array, Dict[str, np.array]]:
+
+    # constants for reward adjustment
+    SUCCESS_REWARD = 100.0
+    FAILURE_REWARD = -100.0
+    SUPPRESSANT_USAGE_PENALTY = -0.5
+    FIRE_INTENSITY_PENALTY = -1.0
+    ATTACK_PENALTY = -0.1
+
+    reward = 0.0
+    reward_components = {}
+
+    # calculate fires left
+    fires_left = np.sum(observation.fires * observation.intensity)
+
+    if fires_left > 0:
+        # Still some fires left
+        # calculate reward based on the reduction of fire and the usage of the suppressants
+        suppressants_usage_reward = SUPPRESSANT_USAGE_PENALTY * np.sum(action)
+        fire_intensity_reward = FIRE_INTENSITY_PENALTY * np.sum(observation.fires * observation.intensity)
+        attack_count_reward = ATTACK_PENALTY * np.sum(observation.attack_counts)
+
+        reward = suppressants_usage_reward + fire_intensity_reward + attack_count_reward
+        reward_components = {"suppressants_usage_reward": suppressants_usage_reward, 
+                             "fire_intensity_reward": fire_intensity_reward,
+                             "attack_count_reward": attack_count_reward}
+
+    else:
+        # Fires extinguished
+        reward = SUCCESS_REWARD
+        reward_components = {"success_reward": SUCCESS_REWARD}
+
+    return reward, reward_components
+```
+
+In this reward function, we have three elements to consider:
+
+    1. Penalties: We assign penalties for suppressant usage, fire intensity, and attack count. This incentivizes the agent to extinguish the fires quickly and effectively without wasting suppressants. A higher penalty is assigned to the fire intensity to encourage the agent to prioritize extinguishing fires.
+    
+    2. Success Reward: If all the fire has been extinguished (i.e., no fire exists in the environment), the agent will be rewarded with `SUCCESS_REWARD`. This is to encourage the agent to finish the task as quickly as possible.
+    
+    3. Failure Reward: If the agent fails to extinguish the fire (i.e., all the suppressants have been used up), then it gets penalized with `FAILURE_REWARD`. This is to motivate the agent to effectively use its resources.
+
+[2025-03-28 10:43:03,229][root][INFO] - Iteration 0: Prompt Tokens: 2701, Completion Tokens: 2156, Total Tokens: 4857
+[2025-03-28 10:43:03,229][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-28 10:43:03,230][root][INFO] - Iteration 0: Code Run 0 successfully training!
