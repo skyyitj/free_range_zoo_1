@@ -1,6 +1,9 @@
 from typing import Tuple, List
 from math import sqrt
 
+
+
+
 def single_agent_policy(
     # Agent's own state
     agent_pos: Tuple[float, float],
@@ -15,7 +18,7 @@ def single_agent_policy(
     fire_levels: List[float],
     fire_intensities: List[float],
 
-    valid_tasks: List[bool]
+    valid_action_space: List[xxx]
 ) -> int:
     """
     Determines the best action for an agent in the wildfire environment.
@@ -31,7 +34,7 @@ def single_agent_policy(
         fire_levels: Current fire level of each task shape: (num_tasks,)
         fire_intensities: Intensity (difficulty) of each task shape: (num_tasks,)
 
-        valid_tasks: List[bool] - Whether each task is valid to be addressed by the agent
+        valid_action_space: List[bool] - Whether each task is valid to be addressed by the agent
     Returns:
         int: Index of the chosen task to address (0 to num_tasks-1), return -1 if there is no valid task
     """
@@ -39,7 +42,7 @@ def single_agent_policy(
     maximum_index = -1
     for index in range(num_tasks):
         score = 0
-        if valid_tasks[index]:  # 确保选取的动作在该Agent的action_space中
+        if (fire_pos[index], 0) in valid_action_space.spaces[0].enumerate():  # 确保选取的动作在该Agent的action_space中
             # 进行h（score）的计算
             fire_x = fire_pos[index][1]
             fire_y = fire_pos[index][0]
