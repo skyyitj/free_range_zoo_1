@@ -35,8 +35,13 @@ import pickle
 # else:
 #     print("没有找到与 free_range_zoo 相关的模块。")
 # 打开文件并使用 pickle.load 读取配置
-with open("/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS1.pkl"
-        , "rb") as file:
+
+from pathlib import Path
+import os 
+
+workspace_dir = Path.cwd()
+print('workspace_dir:', workspace_dir)
+with open(os.path.join(workspace_dir, "../../archive/competition_configs/wildfire/WS1.pkl"), "rb") as file:
     wildfire_configuration = pickle.load(file)
 
 env = wildfire_v0.parallel_env(

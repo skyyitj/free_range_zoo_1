@@ -21,39 +21,41 @@ FRZ_ROOT = os.getcwd()
 import openai
 # openai.api_key = "*************************"
 # openai.api_base = "https://xiaoai.plus/v1"
-openai.api_key = "********************"
+openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 openai.api_base = "https://api.lqqq.ltd/v1"
 # openai.api_key = "*************************"
 @hydra.main(config_path="cfg", config_name="config")
 def main(cfg):
     workspace_dir = Path.cwd()
+    workspace_dir = workspace_dir / "../../../"
     cache = DiskCache(load_cache=cfg.load_cache)
 
-    task = cfg.env.task
-    task_description = cfg.env.description
     suffix = cfg.suffix
     model = cfg.model
     logging.info(f"Using LLM: {model}")
-    logging.info("Task: " + task)
-    logging.info("Task description: " + task_description)
     env_name = cfg.env.env_name.lower()
+
     env_parent = 'wildfire'
+
     task_obs_file = f'{FRZ_ROOT}/envs/{env_parent}/env/{env_name}_obs.py'
     example_code = f'{FRZ_ROOT}/envs/{env_parent}/env/example_code.py'
     task_obs_code_string = file_to_string(task_obs_file)
     example_code_string = file_to_string(example_code)
-    prompt_dir = f'{FRZ_ROOT}/utils/prompts'
+    # prompt_dir = f'{FRZ_ROOT}/utils/prompts'
+    prompt_dir = f'{FRZ_ROOT}/utils/revised_prompts'
     initial_system = file_to_string(f'{prompt_dir}/initial_system.txt')
-    code_output_tip = file_to_string(f'{prompt_dir}/code_output_tip.txt')
-    code_feedback = file_to_string(f'{prompt_dir}/code_feedback.txt')
-    initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
-    reward_signature = file_to_string(f'{prompt_dir}/reward_signature.txt')
-    policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
-    execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
-    initial_system = initial_system.format(reward_signature=reward_signature) + code_output_tip
-    initial_user = initial_user.format(task_obs_code_string=task_obs_code_string,
-                                       task_description=task_description)
-    messages = [{"role": "system", "content": initial_system}, {"role": "user", "content": initial_user}]
+    # code_output_tip = file_to_string(f'{prompt_dir}/code_output_tip.txt')
+    # code_feedback = file_to_string(f'{prompt_dir}/code_feedback.txt')
+    # initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
+    policy_signature = file_to_string(f'{prompt_dir}/policy_signature.txt')
+    # policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
+    # execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
+    # initial_system = initial_system.format(reward_signature=reward_signature) + code_output_tip
+    initial_system = initial_system.format(policy_signature=policy_signature)
+    # initial_user = initial_user.format(task_obs_code_string=task_obs_code_string,
+    #                                    task_description=task_description)
+    # messages = [{"role": "system", "content": initial_system}, {"role": "user", "content": initial_user}]
+    messages = [{"role": "system", "content": initial_system}]
 
     for iter in range(cfg.iteration):
 
@@ -134,11 +136,12 @@ def main(cfg):
 
             agent_files.append(agent_filename)
             shutil.copy(agent_filename,
-                        '/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py')
+                         workspace_dir / 'envs/wildfire/baselines/generated_agent.py')
 
+            exit(0)
             # 打开目标文件并替换第一次出现的 'class' 行
             with open(
-                    '/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py',
+                    workspace_dir / 'envs/wildfire/baselines/generated_agent.py',
                     'r+') as file:
                 lines = file.readlines()
                 for i, line in enumerate(lines):

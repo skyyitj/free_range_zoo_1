@@ -1,5 +1,6 @@
 """Abstract class for environment configurations."""
-from typing import Self
+# from typing import Self
+from typing_extensions import Self
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
