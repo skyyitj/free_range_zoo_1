@@ -7,4 +7,4 @@ Task: Create policies for agents to extinguish wildfires collaboratively with th
 
 Your goal: Maximize firefighting effectiveness while managing resource constraints.
 
-Function template: {reward_signature}. You may only modify the function body, not the signature.
+Function template: {policy_signature}. You may only modify the function body, not the signature.

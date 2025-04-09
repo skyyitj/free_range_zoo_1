@@ -3,15 +3,16 @@ def single_agent_policy(
     agent_pos: Tuple[float, float],
     agent_fire_reduction_power: float,
     agent_suppressant_num: float,
-
+    
     # Other agents' states
     other_agents_pos: List[Tuple[float, float]],
-
+    
     # Task information
     fire_pos: List[Tuple[float, float]],
     fire_levels: List[float],
     fire_intensities: List[float],
-    valid_action_space: List[List[int]]
+
+    valid_action_space: List[bool]
 ) -> int:
     """
     Determines the best action for an agent in the wildfire environment.
@@ -47,7 +48,7 @@ def single_agent_policy(
     Returns:
         int: Index of the chosen task to address (0 to num_tasks-1)
     """
-
+    
     pass
 
 

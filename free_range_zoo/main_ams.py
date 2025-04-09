@@ -19,41 +19,45 @@ FRZ_ROOT = os.getcwd()
 # ISAAC_ROOT_DIR = f"{EUREKA_ROOT_DIR}/../isaacgymenvs/isaacgymenvs"
 # ISAAC_ROOT_DIR = f"{EUREKA_ROOT_DIR}/../isaacgymenvs/isaacgymenvs"
 import openai
-# openai.api_key = "sk-YIzOWLXH7FeKsoxu8YMeaWxVaTHKVsR5Mp4yxtQoOdpxMwvt"
+# openai.api_key = "*************************"
 # openai.api_base = "https://xiaoai.plus/v1"
-openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 openai.api_base = "https://api.lqqq.ltd/v1"
-# openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
+openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 @hydra.main(config_path="cfg", config_name="config")
 def main(cfg):
     workspace_dir = Path.cwd()
+    workspace_dir = workspace_dir / "../../../"
     cache = DiskCache(load_cache=cfg.load_cache)
 
-    task = cfg.env.task
-    task_description = cfg.env.description
     suffix = cfg.suffix
     model = cfg.model
     logging.info(f"Using LLM: {model}")
-    logging.info("Task: " + task)
-    logging.info("Task description: " + task_description)
     env_name = cfg.env.env_name.lower()
+
     env_parent = 'wildfire'
+
     task_obs_file = f'{FRZ_ROOT}/envs/{env_parent}/env/{env_name}_obs.py'
     example_code = f'{FRZ_ROOT}/envs/{env_parent}/env/example_code.py'
     task_obs_code_string = file_to_string(task_obs_file)
     example_code_string = file_to_string(example_code)
-    prompt_dir = f'{FRZ_ROOT}/utils/prompts'
+    # prompt_dir = f'{FRZ_ROOT}/utils/prompts'
+    prompt_dir = f'{FRZ_ROOT}/utils/revised_prompts'
     initial_system = file_to_string(f'{prompt_dir}/initial_system.txt')
-    code_output_tip = file_to_string(f'{prompt_dir}/code_output_tip.txt')
-    code_feedback = file_to_string(f'{prompt_dir}/code_feedback.txt')
-    initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
-    reward_signature = file_to_string(f'{prompt_dir}/reward_signature.txt')
-    policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
-    execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
-    initial_system = initial_system.format(reward_signature=reward_signature) + code_output_tip
-    initial_user = initial_user.format(task_obs_code_string=task_obs_code_string,
-                                       task_description=task_description)
-    messages = [{"role": "system", "content": initial_system}, {"role": "user", "content": initial_user}]
+    # code_output_tip = file_to_string(f'{prompt_dir}/code_output_tip.txt')
+    # code_feedback = file_to_string(f'{prompt_dir}/code_feedback.txt')
+    # initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
+    policy_signature = file_to_string(f'{prompt_dir}/policy_signature.txt')
+    # policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
+    # execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
+    # initial_system = initial_system.format(reward_signature=reward_signature) + code_output_tip
+    initial_system = initial_system.format(policy_signature=policy_signature)
+    # initial_user = initial_user.format(task_obs_code_string=task_obs_code_string,
+    #                                    task_description=task_description)
+    # messages = [{"role": "system", "content": initial_system}, {"role": "user", "content": initial_user}]
+    messages = [{"role": "system", "content": initial_system}]
+    GENERATED_AGENT_PATH = f'{FRZ_ROOT}/envs/wildfire/baselines/generated_agent.py'
+    target_dir = f"{FRZ_ROOT}/outputs"  # 指定保存目录
+    os.makedirs(target_dir, exist_ok=True)  # 自动创建目录
 
     for iter in range(cfg.iteration):
 
@@ -61,18 +65,30 @@ def main(cfg):
         # chunk_size = cfg.sample if "gpt-3.5" in model else 4
 
         rl_runs = []
-        responses = []
-        for _ in range(cfg.sample):
-            # 直接请求API，不再检查缓存
-            response_cur = openai.ChatCompletion.create(
-                model=model,
-                messages=messages,
-                temperature=cfg.temperature,
-                n=1
-            )
-            responses.append(response_cur["choices"][0])  # 直接添加最新响应
-        print("response:")
-        print(response_cur)
+        # responses = []
+        # for _ in range(cfg.sample):
+        #     kwargs = {
+        #         "mode": model,
+        #         "messages": messages,
+        #         "temperature": cfg.temperature,
+        #     }
+        #     if kwargs in cache:
+        #         print('(using cache)', end=' ')
+        #         response_cur = cache[kwargs]
+        #     # 直接请求API，不再检查缓存
+        #     else:
+        #         response_cur = openai.ChatCompletion.create(
+        #             model=model,
+        #             messages=messages,
+        #             temperature=cfg.temperature,
+        #             n=1
+        #         )
+        #     responses.append(response_cur["choices"][0])  # 直接添加最新响应
+        #     print("response:")
+        #     print(response_cur)
+        #
+        #
+        #     cache[kwargs] = response_cur
         successes, reward_correlations, agent_files = [], [], []
 
         # for response_id in range(cfg.sample):
@@ -95,72 +111,107 @@ def main(cfg):
         #             break
 
         for response_id in range(cfg.sample):
-            response_cur = responses[response_id]["message"]["content"]
-
-            # 匹配所有python代码块
-            pattern = r'```python(.*?)```|```(.*?)```'
-            matches = re.findall(pattern, response_cur, re.DOTALL)
-
-            response_code_strings = []  # 存储当前response的所有代码块
-
-            for match in matches:
-                code_string = match[0] if match[0] else match[1]
-                code_string = code_string.strip()
-
-                lines = code_string.split("\n")
-                for i, line in enumerate(lines):
-                    if line.strip().startswith("class "):
-                        extracted_code = "\n".join(lines[i:])
-                        response_code_strings.append(extracted_code)
-                        break
+            # response_cur = responses[response_id]["message"]["content"]
+            response_cur="Here's the policy function for the agent. It will select the task of fire extinguishing based on an evaluation of all fires' intensity and level balanced with the position distance of the agent and other agents. It will also ensure that it has enough suppressant and retreats when resources are depleted.\n\n```python\n# Implied helper functions:\nfrom typing import Tuple, List\n\ndef calculate_moves(agent_pos: Tuple[float, float], task_pos: Tuple[float, float]) -> float:\n    return ((task_pos[0] - agent_pos[0]) ** 2 + (task_pos[1] - agent_pos[1]) ** 2) ** 0.5\n\ndef calculate_task_power(fire_level: float, fire_intensity: float) -> float:\n    return fire_level * fire_intensity\n\ndef single_agent_policy(\n    agent_pos: Tuple[float, float],\n    agent_fire_reduction_power: float,\n    agent_suppressant_num: float,\n    other_agents_pos: List[Tuple[float, float]],\n    fire_pos: List[Tuple[float, float]],\n    fire_levels: List[float],\n    fire_intensities: List[float],\n    valid_action_space: List[List[int]]\n) -> int:\n    \n    # Initialize maximum task power and chosen task index\n    max_task_power = -1\n    chosen_task_index = -1\n    \n    # Loop through each fire task\n    for task_index, (task_pos, fire_level, fire_intensity) in enumerate(zip(fire_pos, fire_levels, fire_intensities)):\n        \n        # calculate the distance from agent to the task\n        moves_to_task = calculate_moves(agent_pos, task_pos)\n        \n        # check if agent has enough suppressant to complete the task\n        if moves_to_task + 1 > agent_suppressant_num:\n            continue\n            \n        # calculate the task power of the fire task based on its level and intensity\n        task_power = calculate_task_power(fire_level, fire_intensity)\n        \n        # Add up the distances of all other agents to the task for collaborative firefighting\n        for other_agent_pos in other_agents_pos:\n            moves_to_task += calculate_moves(other_agent_pos, task_pos)\n            \n        # Balance the evaluation with a division to avoid overly patrolling in low intensity fire. The lower the value, the better\n        evaluation = moves_to_task / task_power\n        \n        # check if this task's evaluation is the lowest\n        if evaluation < max_task_power or max_task_power == -1:\n            max_task_power = evaluation\n            chosen_task_index = task_index\n    \n    return chosen_task_index\n```\nPlease note that you will need to maintain agent states through an environment which is not in the scope of this answer. If there is no valid action for the agent (all suppressant are depleted or all fire tasks are done), then the agent should retreat. This state should be checked on another function that calls this single_agent_policy function."
+            # # 匹配所有python代码块
+            # pattern = r'```python(.*?)```|```(.*?)```'
+            # matches = re.findall(pattern, response_cur, re.DOTALL)
+            #
+            # response_code_strings = []  # 存储当前response的所有代码块
+            #
+            # for match in matches:
+            #     code_string = match[0] if match[0] else match[1]
+            #     code_string = code_string.strip()
+            #
+            #     lines = code_string.split("\n")
+            #     for i, line in enumerate(lines):
+            #         if line.strip().startswith("def "):
+            #             extracted_code = "\n".join(lines[i:])
+            #             response_code_strings.append(extracted_code)
+            #             break
 
             # 单个response内的所有代码块组合
-            combined_response_code = "\n\n".join(response_code_strings)
+            # combined_response_code = "\n\n".join(response_code_strings)
+            #
+            # agent_filename = f"agent_iter{iter}_response{response_id}.py"
+            # with open(agent_filename, 'w') as file:
+            #
+            #     file.write("# Auto-generated Agent Class\n")
+            #     file.write("from typing import Tuple, List, Dict, Any\n")
+            #     file.write("import torch\n")
+            #     file.write("import free_range_rust\n")
+            #     file.write("from torch import Tensor\n")
+            #     file.write("from free_range_rust import Space\n")
+            #     file.write("import numpy as np\n")
+            #     file.write("from collections import defaultdict\n")
+            #     file.write("from free_range_zoo.utils.agent import Agent\n")
+            #
+            #     file.write(combined_response_code + '\n')
+            #
+            # agent_files.append(agent_filename)
+            # shutil.copy(agent_filename,
+            #              workspace_dir / 'envs/wildfire/baselines/generated_agent.py')
+            #
+            # exit(0)
+            # # 打开目标文件并替换第一次出现的 'class' 行
+            # with open(f'{FRZ_ROOT}/envs/wildfire/baselines/generated_agent.py', 'r+') as file:
+            #     lines = file.readlines()
+            #     for i, line in enumerate(lines):
+            #         if line.strip().startswith('def single_agent_policy'):
+            #             lines[i] = 'def single_agent_policy(\n'
+            #             break
+            #     file.seek(0)
+            #     file.writelines(lines)
+            #     file.truncate()
+            #
+            # # 添加等待时间以避免并行错误
+            # time.sleep(0.5)
 
-            agent_filename = f"agent_iter{iter}_response{response_id}.py"
-            with open(agent_filename, 'w') as file:
+            # 提取所有函数定义
+            functions = re.findall(
+                    r'(?ms)(^def\s+\w+\(.*?\)(?:\s*->\s*.+)?:\n(?:\s+.*\n)+)',
+                    response_cur,)
+            functions_code = '\n'.join(functions)
 
-                file.write("# Auto-generated Agent Class\n")
-                file.write("from typing import Tuple, List, Dict, Any\n")
-                file.write("import torch\n")
-                file.write("import free_range_rust\n")
-                file.write("from torch import Tensor\n")
-                file.write("from free_range_rust import Space\n")
-                file.write("import numpy as np\n")
-                file.write("from collections import defaultdict\n")
-                file.write("from free_range_zoo.utils.agent import Agent\n")
+            functions_code = functions_code.rstrip()  # 先去除尾部空白字符
+            if functions_code.endswith("'''") or functions_code.endswith('"""'):
+                functions_code = functions_code[:-3].rstrip()
 
-                file.write(combined_response_code + '\n')
+            print("function_code:",functions_code)
+            # 将函数保存为单独的python文件
+            function_filename = f"agent_iter{iter}_response{response_id}.py"
+            with open(function_filename, 'w') as f:
+                f.write(functions_code)
+            agent_files.append(function_filename)
+            # 更新generate_agent.py文件
+            with open(GENERATED_AGENT_PATH, 'r') as file:
+                content = file.read()
 
-            agent_files.append(agent_filename)
-            shutil.copy(agent_filename,
-                        '/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py')
+            # 删除原single_agent_policy函数
+            generate_agent_updated = re.sub(
+                r'def single_agent_policy\(.*?\)\s*->.*?:\n(?:\s+[^\n]*\n)+',
+                '',
+                content,
+                flags=re.DOTALL
+            )
+            # 将新提取的函数添加到文件末尾
+            generate_agent_updated += '\n\n' + functions_code
 
-            # 打开目标文件并替换第一次出现的 'class' 行
-            with open(
-                    '/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py',
-                    'r+') as file:
-                lines = file.readlines()
-                for i, line in enumerate(lines):
-                    if line.strip().startswith('class '):
-                        lines[i] = 'class GenerateAgent(Agent):\n'
-                        break
-                file.seek(0)
-                file.writelines(lines)
-                file.truncate()
-
-            # 添加等待时间以避免并行错误
-            time.sleep(0.5)
+            # 将更新后的代码保存回generate_agent.py
+            with open(GENERATED_AGENT_PATH, 'w') as file:
+                file.write(generate_agent_updated)
+                exit(0)
 
             print("Current working directory:", os.getcwd())
+
             rl_filepath = f"agent_iter{iter}_response{response_id}.txt"
             with open(rl_filepath, 'w') as f:
                 process = subprocess.Popen([
                     'python', f'{FRZ_ROOT}/experiments/train.py',
-                    '--agent', agent_filename,
+                    '--agent', 'generated_agent',
                     '--env', f'{env_parent}{suffix.lower()}',
                     '--config', 'default',
-                    '--seed', '42'
+                    '--seed', str(42 + response_id)
                 ], stdout=f, stderr=f)
             process.wait()
             block_until_training(rl_filepath, log_status=True, iter_num=iter, response_id=response_id)
@@ -174,9 +225,9 @@ def main(cfg):
         os.makedirs(baseline_dir, exist_ok=True)
 
         for response_id, agent_file in enumerate(agent_files):
-            log_filepath = rl_filepath
+            rl_filepath = f"agent_iter{iter}_response{response_id}.txt"
 
-            with open(log_filepath, 'r') as f:
+            with open(rl_filepath, 'r') as f:
                 stdout_str = f.read()
 
             traceback_msg = filter_traceback(stdout_str)  # 查找是否有traceback信息
@@ -184,10 +235,10 @@ def main(cfg):
 
             if traceback_msg == '':
                 # 替换tensorboard相关代码
-                content += policy_feedback.format(epoch_freq=3)
+                # content += policy_feedback.format(epoch_freq=3)
 
                 # 读取rl_filepath中的内容
-                with open(log_filepath, 'r') as f:
+                with open(rl_filepath, 'r') as f:
                     lines = f.readlines()
 
                 # 提取step rewards
@@ -229,7 +280,7 @@ def main(cfg):
                     total_final_reward = sum(final_rewards)
                     content += f"Total final reward: {total_final_reward:.2f}\n"
 
-                content += code_feedback
+                # content += code_feedback
 
                 # 计算successes
                 if final_rewards:
@@ -244,9 +295,9 @@ def main(cfg):
                     successes.append(-float('inf'))
             else:
                 successes.append(-float('inf'))
-                content += execution_error_feedback.format(traceback_msg=traceback_msg)
-
-            content += code_output_tip
+            #     content += execution_error_feedback.format(traceback_msg=traceback_msg)
+            #
+            # content += code_output_tip
             contents.append(content)
 
         if best_agent:

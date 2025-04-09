@@ -1,6 +1,8 @@
 """Abstract state class for storing environmental state."""
 from __future__ import annotations
-from typing import Self, Optional, Tuple, List
+from typing import Optional, Tuple, List
+from typing_extensions import Self
+# from typing import Self, Optional, Tuple, List
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import copy

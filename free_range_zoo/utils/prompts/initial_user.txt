@@ -1,2 +1,3 @@
-The Python environment is {task_obs_code_string}.And what you need to use is the environmental observations and the status information.
+The Python environment is {task_obs_code_string}.
+And what you need to use is the environmental observations and the status information.
 Write a policy function for the following task: {task_description}.
