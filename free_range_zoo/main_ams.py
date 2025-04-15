@@ -25,7 +25,7 @@ import openai
 # openai.api_key = "*************************"
 # openai.api_base = "https://xiaoai.plus/v1"
 openai.api_base = "https://api.lqqq.ltd/v1"
-openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
+openai.api_key = "**********************"
 
 
 
