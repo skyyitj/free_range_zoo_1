@@ -1,0 +1,1 @@
+single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos, fire_pos, fire_levels, fire_intensities)

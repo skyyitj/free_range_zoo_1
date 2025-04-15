@@ -123,11 +123,11 @@ hydra:
     - env=wildfire
     - model=gpt-4-0613
     - attempt_times=1
-    - sample=3
+    - sample=1
   job:
     name: main_ams
     chdir: null
-    override_dirname: attempt_times=1,env=wildfire,model=gpt-4-0613,sample=3
+    override_dirname: attempt_times=1,env=wildfire,model=gpt-4-0613,sample=1
     id: ???
     num: ???
     config_name: config

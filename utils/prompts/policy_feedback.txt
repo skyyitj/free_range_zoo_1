@@ -1,0 +1,1 @@
+We trained RL policy functions using the provided policy function code as well as global policy metrics such as rewards and episode lengths after every {epoch_freq} steps :

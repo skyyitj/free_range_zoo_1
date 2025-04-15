@@ -39,10 +39,12 @@ import pickle
 from pathlib import Path
 import os
 import numpy as np
+import csv
+from datetime import datetime
 
 workspace_dir = Path.cwd()
 print('workspace_dir:', workspace_dir)
-with open(os.path.join(workspace_dir, "../../archive/competition_configs/wildfire/WS1.pkl"), "rb") as file:
+with open(os.path.join("/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS1.pkl"), "rb") as file:
     wildfire_configuration = pickle.load(file)
 
 env = wildfire_v0.parallel_env(
@@ -63,7 +65,8 @@ from free_range_zoo.envs.wildfire.baselines import GenerateAgent
 
 agents = {agent_name: GenerateAgent(env.action_space(agent_name), parallel_envs=1, configuration=wildfire_configuration)
           for agent_name in env.agents}
-
+# agents = {agent_name: StrongestBaseline(env.action_space(agent_name), parallel_envs=1)
+#           for agent_name in env.agents}
 total_rewards = {agent_name: 0.0 for agent_name in env.agents}  # 记录每个智能体的总奖励
 step_counter = 0  # 添加step计数器
 
@@ -74,145 +77,200 @@ fire_intensity_changes = []
 efficiency_records = []
 extinguished_total = 0
 
-while not torch.all(env.finished):
-    step_counter += 1  # 增加step计数
-    # 添加灭火效率相关的变量
-    total_suppressant_before = 0
-    for agent_name, observation in observations.items():
-        obs, t_mapping = observation
-        # 获取智能体的灭火剂量 - obs['self'] 形状为 tensor([[0., 0., 1., 2.]])
-        agent_suppressant = obs['self'][0, 3].item()  # 获取索引为[0,3]的元素
-        total_suppressant_before += agent_suppressant
-    # 计算火焰强度总和
-    total_fire_intensity_before = 0
-    total_fire_intensity_after = 0
-    total_fire_count_before = 0  # 记录火焰数量
+# 初始化总计数器
+total_fire_intensity_changes = []
+total_rewards_list = []
+total_extinguished_fires = []
+results = []
+all_metrics = dict()
 
-    # 解包 observation 并提取 tasks 中的火焰信息
-    for agent_name, observation in observations.items():
-        obs, t_mapping = observation
-        # 处理嵌套张量
-        tasks_nested = obs['tasks']
-        # 从嵌套张量中提取普通张量
-        for tensor_item in tasks_nested.unbind():
-            # 获取火焰数量（即行数）
-            fire_count = tensor_item.shape[0]
-            total_fire_count_before += fire_count
-            # 提取第三列（火焰强度）
-            fire_intensities = tensor_item[:, 3]
-            total_fire_intensity_before += fire_intensities.sum().item()
-        break
+# 进行十次测试
+for test_run in range(10):
+    # 重置环境和智能体
+    env.reset()
+    step_counter = 0
+    observations, infos = env.reset()
+    total_rewards = {agent_name: 0.0 for agent_name in env.agents}
+    fire_intensity_changes = []
+    extinguished_total = 0
 
-    # 继续执行智能体的动作和环境的更新
-    for agent_name, agent in agents.items():
-        observation = observations[agent_name]
-        if isinstance(observation, tuple):
-            agent.observe(observation)
+    metrics = dict()
+    while not torch.all(env.finished):
+        step_counter += 1  # 增加step计数
+        # 添加灭火效率相关的变量
+        total_suppressant_before = 0
+        for agent_name, observation in observations.items():
+            obs, t_mapping = observation
+            # 获取智能体的灭火剂量 - obs['self'] 形状为 tensor([[0., 0., 1., 2.]])
+            agent_suppressant = obs['self'][0, 3].item()  # 获取索引为[0,3]的元素
+            total_suppressant_before += agent_suppressant
+        # 计算火焰强度总和
+        total_fire_intensity_before = 0
+        total_fire_intensity_after = 0
+        total_fire_count_before = 0  # 记录火焰数量
+
+        # 解包 observation 并提取 tasks 中的火焰信息
+        for agent_name, observation in observations.items():
+            obs, t_mapping = observation
+            # 处理嵌套张量
+            tasks_nested = obs['tasks']
+            # 从嵌套张量中提取普通张量
+            for tensor_item in tasks_nested.unbind():
+                # 获取火焰数量（即行数）
+                fire_count = tensor_item.shape[0]
+                total_fire_count_before += fire_count
+                # 提取第三列（火焰强度）
+                fire_intensities = tensor_item[:, 3]
+                total_fire_intensity_before += fire_intensities.sum().item()
+            break
+
+        # 继续执行智能体的动作和环境的更新
+        for agent_name, agent in agents.items():
+            observation = observations[agent_name]
+            if isinstance(observation, tuple):
+                agent.observe(observation)
+            else:
+                agent.observe((observation, None))
+
+        agent_actions = {
+            agent_name: agents[agent_name].act(action_space=env.action_space(agent_name))
+            for agent_name in env.agents
+        }
+
+        next_observations, rewards, terminations, truncations, infos = env.step(agent_actions)
+        for key in infos['rewards'].keys():
+             
+            if key not in metrics.keys():
+                metrics[key] = infos['rewards'][key]
+            else:
+                metrics[key] += infos['rewards'][key]
+        
+    
+        
+        # 每个step输出一次reward
+        #print(f"\nStep {step_counter} rewards:")
+        for agent_name, reward in rewards.items():
+            total_rewards[agent_name] += reward
+            #print(f"Agent {agent_name} ,total reward: {total_rewards[agent_name]}")
+
+        # 计算火焰强度总和和火焰数量（之后）
+        total_fire_count_after = 0  # 记录火焰数量
+        for agent_name, observation in next_observations.items():
+            obs, t_mapping = observation
+            # 处理嵌套张量
+            tasks_nested = obs['tasks']
+            # 从嵌套张量中提取普通张量
+            for tensor_item in tasks_nested.unbind():
+                # 获取火焰数量（即行数）
+                fire_count = tensor_item.shape[0]
+                total_fire_count_after += fire_count
+                # 提取第三列（火焰强度）
+                fire_intensities = tensor_item[:, 3]
+                total_fire_intensity_after += fire_intensities.sum().item()
+            break
+
+        # 计算火焰变化
+        fire_intensity_change = total_fire_intensity_after - total_fire_intensity_before
+        fire_count_change = total_fire_count_after - total_fire_count_before
+        if "Fire Intensity Change" not in metrics.keys():
+            metrics["Fire Intensity Change"] = fire_intensity_change
         else:
-            agent.observe((observation, None))
+            metrics["Fire Intensity Change"] += fire_intensity_change
+        # 记录火焰强度变化
+        fire_intensity_changes.append(fire_intensity_change)
 
-    agent_actions = {
-        agent_name: agents[agent_name].act(action_space=env.action_space(agent_name))
-        for agent_name in env.agents
-    }
+        # 添加灭火效率计算
+        total_suppressant_after = 0
+        for agent_name, observation in next_observations.items():
+            obs, t_mapping = observation
+            agent_suppressant = obs['self'][0, 3].item()  # 获取索引为[0,3]的元素
+            total_suppressant_after += agent_suppressant
 
-    next_observations, rewards, terminations, truncations, infos = env.step(agent_actions)
+        # 计算灭火剂使用量
+        suppressant_used = max(0, total_suppressant_before - total_suppressant_after)
+        if "Used Suppressant" not in metrics.keys():
+            metrics["Used Suppressant"] = suppressant_used
+        else:
+            metrics["Used Suppressant"] += suppressant_used
 
-    # 每个step输出一次reward
-    print(f"\nStep {step_counter} rewards:")
-    for agent_name, reward in rewards.items():
-        total_rewards[agent_name] += reward
-        print(f"Agent {agent_name} ,total reward: {total_rewards[agent_name]}")
 
-    # 计算火焰强度总和和火焰数量（之后）
-    total_fire_count_after = 0  # 记录火焰数量
-    for agent_name, observation in next_observations.items():
-        obs, t_mapping = observation
-        # 处理嵌套张量
-        tasks_nested = obs['tasks']
-        # 从嵌套张量中提取普通张量
-        for tensor_item in tasks_nested.unbind():
-            # 获取火焰数量（即行数）
-            fire_count = tensor_item.shape[0]
-            total_fire_count_after += fire_count
-            # 提取第三列（火焰强度）
-            fire_intensities = tensor_item[:, 3]
-            total_fire_intensity_after += fire_intensities.sum().item()
-        break
+        # 计算灭火效率
+        fire_intensity_reduction = max(0, total_fire_intensity_before - total_fire_intensity_after)  # 火焰强度的减少量
+        extinguish_efficiency = 0
+        if suppressant_used > 0 and fire_intensity_reduction > 0:
+            extinguish_efficiency = fire_intensity_reduction / suppressant_used
+            efficiency_records.append(extinguish_efficiency)
 
-    # 计算火焰变化
-    fire_intensity_change = total_fire_intensity_after - total_fire_intensity_before
-    fire_count_change = total_fire_count_after - total_fire_count_before
+        extinguished_fires = max(0, -fire_count_change)  # 只考虑减少的火点(即扑灭的火点)
+        extinguished_total += extinguished_fires
+        # 更新下一步的初始灭火剂量
+        total_suppressant_before = total_suppressant_after
 
-    # 记录火焰强度变化
-    fire_intensity_changes.append(fire_intensity_change)
+        # 更新观察值
+        observations = next_observations
 
-    # 添加灭火效率计算
-    total_suppressant_after = 0
-    for agent_name, observation in next_observations.items():
-        obs, t_mapping = observation
-        agent_suppressant = obs['self'][0, 3].item()  # 获取索引为[0,3]的元素
-        total_suppressant_after += agent_suppressant
+    print('test_run:', test_run, 'step_counter:', step_counter)
+    if 'Steps' not in metrics.keys():
+        metrics['Steps'] = [step_counter]
+    else:
+        metrics['Steps'].append(step_counter)
+    
+    metrics['Burning Number'] /= step_counter 
+    # 记录每次测试的结果
+    total_fire_intensity_changes.append(sum(fire_intensity_changes))
+    if 'Rewards' not in metrics.keys():
+        metrics['Rewards'] = [sum(total_rewards.values())]
+    else:
+        metrics['Rewards'].append(sum(total_rewards.values()))
+    # total_rewards_list.append(sum(total_rewards.values()))
+    total_extinguished_fires.append(extinguished_total)
 
-    # 计算灭火剂使用量
-    suppressant_used = max(0, total_suppressant_before - total_suppressant_after)
+    for key in metrics.keys():
+        if key not in all_metrics.keys():
+            all_metrics[key] = [metrics[key]]
+        else:
+            all_metrics[key].append(metrics[key])
+    # 输出每次测试的结果
+    # print(f"Test {test_run + 1} Metric:")
+    # print(f"  - Total Rewards: {total_rewards_list[-1].item():.2f}")
+    # for key in metrics.keys():
+    #     print(f"  - {key}: {metrics[key]:.2f}")
+    # print(f"  - Fire Intensity Change per step: {total_fire_intensity_changes[-1] / step_counter:.2f}")
+    results.append(total_fire_intensity_changes[-1] / step_counter) 
+    
+    # print(f"  - Suppressant Efficiency: {extinguish_efficiency:.4f} intensity/suppressant")
 
-    # 计算灭火效率
-    fire_intensity_reduction = max(0, total_fire_intensity_before - total_fire_intensity_after)  # 火焰强度的减少量
-    extinguish_efficiency = 0
-    if suppressant_used > 0 and fire_intensity_reduction > 0:
-        extinguish_efficiency = fire_intensity_reduction / suppressant_used
-        efficiency_records.append(extinguish_efficiency)
+# 计算并输出十次测试的平均值
+average_fire_intensity_change = np.mean(results)
+# average_total_rewards = np.mean(total_rewards_list)
+average_suppressant_efficiency = np.mean(efficiency_records)
+average_used_suppressant_number = np.mean(total_suppressant_before)
+print("\nAverage Evaluate Metrics:")
 
-    extinguished_fires = max(0, -fire_count_change)  # 只考虑减少的火点(即扑灭的火点)
-    extinguished_total += extinguished_fires
-    # 更新下一步的初始灭火剂量
-    total_suppressant_before = total_suppressant_after
+# print(f"  - Average Rewards: {average_total_rewards:.2f}")
+for key in all_metrics.keys():
+    print(f"  - Average {key}: {np.mean(all_metrics[key]):.2f}")
+print(f"  - Average Fire Intensity Change: {average_fire_intensity_change:.2f}")
+print(f"  - Average Used Suppressant Number: {average_used_suppressant_number:.2f}")
+print(f"  - Average Suppressant Efficiency: {average_suppressant_efficiency:.4f} intensity/suppressant")
 
-    # 输出本次步骤的火焰强度变化
-    print(
-        f"  - Fire Intensity Change: {fire_intensity_change:.2f} ({'increase' if fire_intensity_change > 0 else 'decrease' if fire_intensity_change < 0 else 'no change'})")
-    # 输出灭火效率指标
-    print(
-        f"  - Fire Count Change: {fire_count_change} ({'increase' if fire_count_change > 0 else 'decrease' if fire_count_change < 0 else 'no change'})")
-    if suppressant_used > 0:
-        print(f"  - Suppressant Used: {suppressant_used:.2f}")
-    if fire_intensity_reduction > 0:
-        print(f"  - Fire Intensity Reduction: {fire_intensity_reduction:.2f}")
-    if extinguish_efficiency > 0:
-        print(f"  - Extinguish Efficiency: {extinguish_efficiency:.4f} intensity/suppressant")
-    if extinguished_fires > 0:
-        print(f"  - Fires Extinguished: {extinguished_fires}")
+# 将结果写入 CSV 文件
+csv_path = "average_results.csv"
 
-    # 更新观察值
-    observations = next_observations
+# 检查文件是否存在以及是否为空
+file_exists = os.path.isfile(csv_path)
+file_is_empty = os.path.getsize(csv_path) == 0 if file_exists else True
+keys_list = list(all_metrics.keys()) + ['Average_fire_intensity_change', 'Average_used_suppressant_number', 'Average Suppressant Efficiency']
+values_list = list(all_metrics.values()) + [average_fire_intensity_change, average_used_suppressant_number, average_suppressant_efficiency]
 
+# 将结果写入 CSV 文件
+with open(csv_path, mode='a', newline='') as file:
+    writer = csv.writer(file)
+
+    if not file_exists or file_is_empty:
+        writer.writerow(keys_list)
+
+    writer.writerow(values_list)
 env.close()
 
-# 打印最终的总奖励和平均每步火焰强度变化
-print("\nFinal total rewards:")
-for agent_name, reward in rewards.items():
-    print(f"Agent {agent_name} ,total reward: {total_rewards[agent_name]}")
-# 计算并输出平均每步火焰强度变化
-if fire_intensity_changes:
-    avg_intensity_change = np.mean(fire_intensity_changes)
-    print(f"\nFire Intensity Change Statistics:")
-    print(f"  - Average fire intensity change per step: {avg_intensity_change:.2f}")
-    print(f"  - Total fire intensity change: {sum(fire_intensity_changes):.2f}")
-    print(f"  - Steps with fire intensity increase: {sum(1 for change in fire_intensity_changes if change > 0)}")
-    print(f"  - Steps with fire intensity decrease: {sum(1 for change in fire_intensity_changes if change < 0)}")
-    print(f"  - Steps with stable fire intensity: {sum(1 for change in fire_intensity_changes if change == 0)}")
 
-# 输出灭火效率的总体统计
-print("\nExtinguish Efficiency Statistics:")
-if efficiency_records:
-    avg_efficiency = sum(efficiency_records) / len(efficiency_records)
-    max_efficiency = max(efficiency_records)
-    print(f"  - Total Fires Extinguished: {extinguished_total}")
-    print(f"  - Average Extinguish Efficiency: {avg_efficiency:.4f} intensity/suppressant")
-    print(f"  - Maximum Extinguish Efficiency: {max_efficiency:.4f} intensity/suppressant")
-    print(f"  - Steps with Effective Extinguishing: {len(efficiency_records)}")
-else:
-    print("  - No effective fire extinguishing occurred")
-
-print("training process finished!")

@@ -1,48 +1,65 @@
-def calculate_moves(agent_pos: Tuple[float, float], task_pos: Tuple[float, float]) -> float:
-    return ((task_pos[0] - agent_pos[0]) ** 2 + (task_pos[1] - agent_pos[1]) ** 2) ** 0.5
-
-def calculate_task_power(fire_level: float, fire_intensity: float) -> float:
-    return fire_level * fire_intensity
+import math
 
 def single_agent_policy(
+    # Agent's own state
     agent_pos: Tuple[float, float],
     agent_fire_reduction_power: float,
     agent_suppressant_num: float,
+
+    # Other agents' states
     other_agents_pos: List[Tuple[float, float]],
+
+    # Task information
     fire_pos: List[Tuple[float, float]],
     fire_levels: List[float],
     fire_intensities: List[float],
-    valid_action_space: List[List[int]]
 ) -> int:
+    """
+    Determines the best action for an agent in the wildfire environment.
+
+    Args:
+        agent_pos: Position of this agent (y, x)
+        agent_fire_reduction_power: Fire suppression power of this agent
+        agent_suppressant_num: Number of suppressant available
+
+        other_agents_pos: Positions of all other agents [(y1, x1), (y2, x2), ...] shape: (num_agents-1, 2)
+
+        fire_pos: Positions of all fire tasks [(y1, x1), (y2, x2), ...] shape: (num_tasks, 2)
+        fire_levels: Current fire level of each task shape: (num_tasks,)
+        fire_intensities: Intensity (difficulty) of each task shape: (num_tasks,)
+
+    Returns:
+        int: Index of the chosen task to address (0 to num_tasks-1)
+    """
+
+    def euclidean_distance(start, end):
+        return math.sqrt((end[0] - start[0])**2 + (end[1] - start[1])**2)
+
+    # Criteria to rank fires: (1) Fire level, (2) Intensity, (3) Proximity to this agent, (4) Avoid overlapping efforts
+    # Initialize the weights for criteria
+    weight_level = 1.0
+    weight_intensity = 2.0
+    weight_distance = 0.5
+    weight_other_agents_proximity = -0.5
     
-    # Initialize maximum task power and chosen task index
-    max_task_power = -1
-    chosen_task_index = -1
-    
-    # Loop through each fire task
-    for task_index, (task_pos, fire_level, fire_intensity) in enumerate(zip(fire_pos, fire_levels, fire_intensities)):
+    best_fire_index = -1
+    best_fire_score = float('-inf')
+
+    for i, (pos, level, intensity) in enumerate(zip(fire_pos, fire_levels, fire_intensities)):
+        distance_to_fire = euclidean_distance(agent_pos, pos)
         
-        # calculate the distance from agent to the task
-        moves_to_task = calculate_moves(agent_pos, task_pos)
+        # Count other agents closer to this fire than this agent
+        closer_agents_count = sum(1 for other_pos in other_agents_pos if euclidean_distance(other_pos, pos) < distance_to_fire)
         
-        # check if agent has enough suppressant to complete the task
-        if moves_to_task + 1 > agent_suppressant_num:
-            continue
-            
-        # calculate the task power of the fire task based on its level and intensity
-        task_power = calculate_task_power(fire_level, fire_intensity)
+        # Calculate score for this fire
+        score = (weight_level * level +
+                 weight_intensity * intensity +
+                 weight_distance / (distance_to_fire + 1) +  # avoid division by zero
+                 weight_other_agents_proximity * closer_agents_count)
         
-        # Add up the distances of all other agents to the task for collaborative firefighting
-        for other_agent_pos in other_agents_pos:
-            moves_to_task += calculate_moves(other_agent_pos, task_pos)
-            
-        # Balance the evaluation with a division to avoid overly patrolling in low intensity fire. The lower the value, the better
-        evaluation = moves_to_task / task_power
-        
-        # check if this task's evaluation is the lowest
-        if evaluation < max_task_power or max_task_power == -1:
-            max_task_power = evaluation
-            chosen_task_index = task_index
-    
-    return chosen_task_index
-```
+        # Choose the fire task which has the maximum score
+        if score > best_fire_score:
+            best_fire_score = score
+            best_fire_index = i
+     
+    return best_fire_index

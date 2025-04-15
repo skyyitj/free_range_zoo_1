@@ -1,0 +1,12 @@
+/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+workspace_dir: /home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/outputs/main_ams/2025-04-10
+Traceback (most recent call last):
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 62, in <module>
+    from free_range_zoo.envs.wildfire.baselines import GenerateAgent
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/__init__.py", line 5, in <module>
+    from free_range_zoo.envs.wildfire.baselines.generated_agent import GenerateAgent
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 145
+    # Your policy logic
+                       ^
+IndentationError: expected an indented block after function definition on line 136

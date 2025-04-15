@@ -1,0 +1,14 @@
+/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+workspace_dir: /home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/outputs/main_ams/2025-04-11
+Traceback (most recent call last):
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 130, in <module>
+    agent_name: agents[agent_name].act(action_space=env.action_space(agent_name))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 97, in act
+    maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 154, in single_agent_policy
+    distances = [np.sqrt((fire[0]-agent_pos[0])**2 + (fire[1]-agent_pos[1])**2) for fire in fire_pos]
+                 ^^
+NameError: name 'np' is not defined

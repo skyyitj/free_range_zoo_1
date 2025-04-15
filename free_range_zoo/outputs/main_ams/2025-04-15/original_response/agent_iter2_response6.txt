@@ -1,0 +1,61 @@
+A good approach might be to allocate more of the suppressant resource to fires that are closer to the agent and have higher intensity levels. This way, we can maximize the efficiency of each "action" taken by the agent. We would have to adjust the 'fire_putout_weight' correspondingly, probably by increasing the weight for tasks involving higher-intensity fires. 
+
+Additionally, we could add an extra condition that if agent suppressants are low, the agent should prioritize fires with lower intensities, which it can fully extinguish using the available resources. 
+
+Let's revise the policy function following these thoughts.
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity vale of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Adjusted temperature parameters
+    level_temperature = 0.01
+    intensity_temperature = 0.01
+    distance_temperature = 0.01
+
+    for task in range(num_tasks):
+
+        # get euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # calculate score for each task using fire intensity, level, and distance
+        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
+        score = (
+            np.exp(-fire_levels[task] * level_temperature) +
+            np.exp(-fire_intensities[task] * intensity_temperature) -
+            np.exp(fire_distance * distance_temperature)
+        ) 
+
+        # Check if agent has sufficient resources to fully extinguish the fire
+        if fire_intensities[task] <= can_put_out_fire:
+            # Increase the score if the agent can completely extinguish the fire
+            score *= 1.5
+
+        scores[task] = score * fire_putout_weight[task]
+
+    # return the index of the task with the highest score
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+
+With these modifications, the agents should now efficiently allocate their suppressant usage along with considering fire distance and fire intensity. Ideally, this should lead to improved metrics across the board.

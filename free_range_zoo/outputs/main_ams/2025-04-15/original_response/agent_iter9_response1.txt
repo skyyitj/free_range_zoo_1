@@ -1,0 +1,56 @@
+```python
+import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Temperatures for scoring components
+    level_temperature = 0.3
+    intensity_temperature = 0.25 # increased intensity temperature
+    distance_temperature = 0.1 # decreased distance temperature
+    weight_temperature = 0.2 # added weight_temperature
+
+    for task in range(num_tasks):
+
+        # calculate the euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # Compute transformed task weight
+        fire_weight_transformed = np.exp(fire_putout_weight[task]*weight_temperature)
+        
+        # Scoring function based on the weight of the fire, distance to the fire
+        # intensity of the fire and suppressants left with the agent
+        scores[task] = (
+            fire_weight_transformed * np.exp(-(fire_levels[task] / can_put_out_fire) * level_temperature) +
+            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        )
+
+    # Return task index with maximum score
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+
+In this revised policy, I have introduced a new transformed component `fire_weight_transformed` which is derived from `fire_putout_weight`. The purpose is to let the priority weights for fire suppression tasks have more impact on the decision-making process. I have added a weight_temperature to control its impact. By adjusting the weight_temperature, I expect to improve the efficiency and performance of the agent. It would help the agent to prioritize those fires which are more important (having high reward weights). Moreover, the overall reward is expected to improve.  By carefully adjusting the temperatures of other components, it also keeps the balance among the distances, the intensity and the fire levels. It remains focusing on the high intensity and closer fires.

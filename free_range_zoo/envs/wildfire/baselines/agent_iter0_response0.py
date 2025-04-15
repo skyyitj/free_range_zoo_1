@@ -1,86 +1,64 @@
-# Auto-generated Agent Class
-from typing import Tuple, List, Dict, Any
-import torch
-import free_range_rust
-from torch import Tensor
-from free_range_rust import Space
-import numpy as np
-from collections import defaultdict
-from free_range_zoo.utils.agent import Agent
-class CoordinatedFirefighterAgent(Agent):
-    """Agent that coordinates with others to suppress fires while managing resources."""
+def single_agent_policy(
+    # Agent's own state
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
 
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize the agent."""
-        super().__init__(*args, **kwargs)
-        self.actions = torch.zeros((self.parallel_envs, 2), dtype=torch.int32)  # Action storage
+    # Other agents' states
+    other_agents_pos: List[Tuple[float, float]],
 
-    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
-        """
-        Return a list of actions, one for each parallel environment.
-        
-        Args:
-            action_space: free_range_rust.Space - Current action space available to the agent.
-            
-        Returns:
-            List[List[int]] - List of actions, one for each parallel environment.
-        """
-        has_suppressant = self.observation['self'][:, 3] != 0  # Check if agent has suppressant
-        self_x = self.observation['self'][:, 1]  # Agent x position
-        self_y = self.observation['self'][:, 0]  # Agent y position
-        
-        for batch in range(self.parallel_envs):
-            max_score = -float('inf')  # Initialize maximum score to a very low value
-            best_action = -1  # Default to no action if no fire is detected
-            
-            if self.observation['tasks'][batch].size(0) == 0:  # If no fire present
-                self.actions[batch].fill_(-1)  # No-op action
-                continue
-            
-            # Iterate through each task (fire) to decide which one to prioritize
-            for idx, fire in enumerate(self.observation['tasks'][batch]):
-                fire_x = fire[1]  # Fire x position
-                fire_y = fire[0]  # Fire y position
-                fire_intensity = fire[2]  # Fire intensity
+    # Task information
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[float],
+    fire_intensities: List[float],
+) -> int:
+    """
+    Determines the best action for an agent in the wildfire environment.
 
-                distance = torch.sqrt((fire_x - self_x[batch]) ** 2 + (fire_y - self_y[batch]) ** 2)  # Euclidean distance
-                suppression_effectiveness = (2 / (distance + 1))  # Prioritize closer fires
-                suppression_effectiveness *= fire_intensity * 0.1  # Penalize fires with higher intensity
+    Args:
+        agent_pos: Position of this agent (y, x)
+        agent_fire_reduction_power: Fire suppression power of this agent
+        agent_suppressant_num: Number of suppressant available
 
-                # Calculate a score for this fire, based on distance and intensity
-                score = suppression_effectiveness
+        other_agents_pos: Positions of all other agents [(y1, x1), (y2, x2), ...] shape: (num_agents-1, 2)
 
-                if score > max_score:
-                    max_score = score
-                    best_action = idx  # Select this fire to fight
+        fire_pos: Positions of all fire tasks [(y1, x1), (y2, x2), ...] shape: (num_tasks, 2)
+        fire_levels: Current fire level of each task shape: (num_tasks,)
+        fire_intensities: Intensity (difficulty) of each task shape: (num_tasks,)
 
-            # If there's no available fire, the agent does nothing
-            if best_action == -1:
-                self.actions[batch].fill_(-1)
-            else:
-                self.actions[batch, 0] = best_action  # Set the action to fight the selected fire
-                self.actions[batch, 1] = 0  # Use firepower
+    Returns:
+        int: Index of the chosen task to address (0 to num_tasks-1)
+    """
+    task_scores = []
 
-            # Ensure agents without suppressant do not take actions requiring it
-            self.actions[batch, 1].masked_fill_(~has_suppressant[batch], -1)
+    # Evaluate each task
+    for i in range(len(fire_pos)):
+        task_pos = fire_pos[i]
+        task_fire_level = fire_levels[i]
+        task_fire_intensity = fire_intensities[i]
 
-        return self.actions
+        # Calculate distance to task
+        distance = (abs(agent_pos[0] - task_pos[0]) ** 2 + abs(agent_pos[1] - task_pos[1]) ** 2) ** 0.5
 
-    def observe(self, observation: Dict[str, Any]) -> None:
-        """
-        Observe the environment and process the current state.
-        
-        Args:
-            observation: Dict[str, Any] - Current observation from the environment.
-        """
-        self.observation = observation
-        self.fires = self.observation['tasks'].to_padded_tensor(-100)[:, :, [0, 1, 3]]  # Fire locations and intensity
-        self.argmax_store = torch.zeros_like(self.fires)  # Initialize storage for processed fire data
+        # Check if other agents are closer to the task
+        for other_agent_pos in other_agents_pos:
+            other_agent_distance = (abs(other_agent_pos[0] - task_pos[0]) ** 2 + abs(other_agent_pos[1] - task_pos[1]) ** 2) ** 0.5
+            if other_agent_distance < distance:
+                # Skip this task, as other agents are closer and can handle it more effectively
+                break
+        else:
+            # All other agents are farther away from this task, so consider it
+            # Task score is a function of fire level, fire intensity, agent's fire reduction power, and available suppressant
+            # For now, let's say our score function is: score = (fire_level - distance * fire_intensity) * (fire_reduction_power * available_suppressant)
+            # Adjust the score function as needed, to reflect your specific strategy
+            task_score = (task_fire_level - distance * task_fire_intensity) * (agent_fire_reduction_power * agent_suppressant_num)
+            task_scores.append((i, task_score))
 
-        # For each parallel environment, store fire data for decision-making
-        for batch in range(self.parallel_envs):
-            for fire_idx in range(self.fires[batch].size(0)):
-                self.argmax_store[batch][fire_idx] = self.fires[batch][fire_idx]
-        
-        # Update any other relevant state, such as team status or fire suppression history
-        self.team_capacity = self.observation['self'][:, 3]  # Get the capacity of the team members (suppressant)
+    if not task_scores:
+        # No tasks to consider, choose a default action
+        # For example, return -1 to indicate no action
+        return -1
+    else:
+        # Choose the task with highest score
+        task_scores.sort(key=lambda x: x[1], reverse=True)
+        return task_scores[0][0]

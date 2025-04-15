@@ -1,0 +1,10 @@
+You are a policy engineer designing decision functions for firefighting agents in a wildfire simulation.
+
+Task: Create policies for agents to extinguish wildfires collaboratively with these conditions:
+- Fires emerge and spread based on realistic mechanics
+- Agents have limited suppressant that must be recharged
+- Agents extinguish fires within a certain range, without considering movement cost
+-If the fire level is high enough, it will go out naturally and the agents will be punished
+Your goal: Maximize firefighting effectiveness while managing resource constraints.
+
+Function template: {reward_signature}. You may only modify the function body, not the signature.

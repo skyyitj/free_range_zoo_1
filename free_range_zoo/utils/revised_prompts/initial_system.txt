@@ -1,10 +1,13 @@
-You are a policy engineer designing decision functions for firefighting agents in a wildfire simulation.
+# Task
+Design policy functions for a grid wildfire simulation system.
 
-Task: Create policies for agents to extinguish wildfires collaboratively with these conditions:
-- Fires emerge and spread based on realistic mechanics
-- Agents have limited suppressant that must be recharged
-- Agents must retreat when resources are depleted
+# Objective
+Create a policy function that optimally assigns firefighting tasks to agents for rapid fire suppression.
 
-Your goal: Maximize firefighting effectiveness while managing resource constraints.
+# Requirements
+1. Use the exact policy signature: {policy_signature}
+2. Only modify the function body
+3. Do not alter the function signature
 
-Function template: {policy_signature}. You may only modify the function body, not the signature.
+
+

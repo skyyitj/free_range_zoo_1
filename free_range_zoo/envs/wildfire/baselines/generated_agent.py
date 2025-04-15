@@ -1,11 +1,11 @@
-# Auto-generated Agent Class
 from typing import List, Dict, Any
 import torch
 import free_range_rust
+import math
 from free_range_zoo.utils.agent import Agent
 from math import sqrt
 from typing import Tuple, List
-
+import numpy as np
 
 class GenerateAgent(Agent):
     """Agent that always fights the strongest available fire."""
@@ -27,11 +27,14 @@ class GenerateAgent(Agent):
             config = kwargs['configuration']
             self.grid_width = config.grid_width
             self.grid_height = config.grid_height
+            self.reward_config = config.reward_config.fire_rewards.cpu().numpy()
+            # for key, value in config.__dict__.items():
+            #     print("**************************config.keys:",key,":",value)
         else:
             # 如果没有配置，从kwargs直接获取
             self.grid_width = kwargs.get('grid_width', 3)
             self.grid_height = kwargs.get('grid_height', 3)
-        #print(self.grid_width)
+        # print(self.grid_width)
 
     def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
         """
@@ -43,9 +46,9 @@ class GenerateAgent(Agent):
             List[List[int]] - List of actions, one for each parallel environment.
         """
         has_suppressant = self.observation['self'][:, 3] != 0
-        #print(f"self.actions shape: {self.actions.shape}")
-        #print(f"self.observation['self'] shape: {self.observation['self'].shape}")
-        #print(f"has_suppressant shape: {has_suppressant.shape}")
+        # print(f"self.actions shape: {self.actions.shape}")
+        # print(f"self.observation['self'] shape: {self.observation['self'].shape}")
+        # print(f"has_suppressant shape: {has_suppressant.shape}")
 
         for batch in range(self.parallel_envs):
             maximum_index = -1
@@ -67,39 +70,51 @@ class GenerateAgent(Agent):
             other_agents_obs = self.observation['others'][batch].cpu().numpy()
             other_agents_pos = other_agents_obs.tolist()
 
-            #print(f"grid_width: {self.grid_width}, grid_height: {self.grid_height}")
-            valid_action_space = torch.full((self.grid_width, self.grid_height), -1, dtype=torch.int32)
-            #print(f"valid_action_space shape: {valid_action_space.shape}")
-
-            #print(f"argmax_store[batch] shape: {self.argmax_store[batch].shape}")
+            # print(f"grid_width: {self.grid_width}, grid_height: {self.grid_height}")
+            # valid_action_space = torch.full((self.grid_width, self.grid_height), -1, dtype=torch.int32)
+            # print(f"valid_action_space shape: {valid_action_space.shape}")
+            fire_pos_new = []
+            fire_levels_new = []
+            fire_intensities_new = []
+            fire_rewards_weights = []
+            # print(f"argmax_store[batch] shape: {self.argmax_store[batch].shape}")
+            index_map = {}
             for i in range(self.argmax_store[batch].size(0)):
                 # 获取火点位置
                 fire_y = self.argmax_store[batch][i][0]
                 fire_x = self.argmax_store[batch][i][1]
 
-                #print(f"Fire point {i}: x={fire_x}, y={fire_y}")
+                # print(f"Fire point {i}: x={fire_x}, y={fire_y}")
 
                 # 确保坐标在有效范围内
                 if 0 <= fire_x < self.grid_width and 0 <= fire_y < self.grid_height:
-                    if [fire_x, fire_y] in action_space.spaces[0].enumerate():
+                    if [i, 0] in action_space.spaces[0].enumerate():
                         # 将火点的索引存储到valid_action_space中
-                        valid_action_space[fire_x][fire_y] = i
+                        index_map[len(fire_pos_new)] = i
+                        fire_pos_new.append(fire_pos[i])
+                        fire_levels_new.append(fire_levels[i])
+                        fire_intensities_new.append(fire_intensities[i])
+                        fire_rewards_weights.append(float(self.reward_config[fire_y, fire_x]))
                 else:
                     print(f"Warning: Fire point {i} out of bounds: x={fire_x}, y={fire_y}")
-            maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
-                                                fire_pos, fire_levels, fire_intensities, valid_action_space)
-            #print(f"maximum_index: {maximum_index}")
+            assert len(fire_rewards_weights) == len(fire_pos_new) == len(fire_levels_new) == len(fire_intensities_new)
+            if len(fire_rewards_weights) > 0:
+                maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
+                                                    fire_pos_new, fire_levels_new, fire_intensities_new, fire_rewards_weights)
+            else:
+                maximum_index = -1
+            # print(f"maximum_index: {maximum_index}")
 
             if maximum_index == -1:  # 若maximum_index没有更新，则说明在action_space中没有可扑灭的火焰
                 self.actions[batch].fill_(-1)
             else:
-                self.actions[batch, 0] = maximum_index
+                self.actions[batch, 0] = index_map[maximum_index]
                 self.actions[batch, 1] = 0
-                #print(f"self.actions[batch] after update: {self.actions[batch]}")
+                # print(f"self.actions[batch] after update: {self.actions[batch]}")
 
         self.actions[:, 1].masked_fill_(~has_suppressant, -1)  # Agents that do not have suppressant noop
-        #print(f"self.actions final shape: {self.actions.shape}")
-        #print(f"self.actions final content: {self.actions}")
+        # print(f"self.actions final shape: {self.actions.shape}")
+        # print(f"self.actions final content: {self.actions}")
 
         return self.actions
 
@@ -117,76 +132,60 @@ class GenerateAgent(Agent):
             self.observation = observation
 
         self.fires = self.observation['tasks'].to_padded_tensor(-100)[:, :, [0, 1, 3]]
-        #print(f"fires shape: {self.fires.shape}")
+        # print(f"fires shape: {self.fires.shape}")
         self.argmax_store = torch.zeros_like(self.fires)
-        #print(f"argmax_store shape: {self.argmax_store.shape}")
+        # print(f"argmax_store shape: {self.argmax_store.shape}")
         for batch in range(self.parallel_envs):
             for element in range(self.fires[batch].size(0)):
                 self.argmax_store[batch][element] = self.fires[batch][element]
+                
 
-
-
-def calculate_moves(agent_pos: Tuple[float, float], task_pos: Tuple[float, float]) -> float:
-    return ((task_pos[0] - agent_pos[0]) ** 2 + (task_pos[1] - agent_pos[1]) ** 2) ** 0.5
-
-def calculate_task_power(fire_level: float, fire_intensity: float) -> float:
-    return fire_level * fire_intensity
-
-
-
-def calculate_moves(agent_pos: Tuple[float, float], task_pos: Tuple[float, float]) -> float:
-    return ((task_pos[0] - agent_pos[0]) ** 2 + (task_pos[1] - agent_pos[1]) ** 2) ** 0.5
-
-def calculate_task_power(fire_level: float, fire_intensity: float) -> float:
-    return fire_level * fire_intensity
-
-```
-
-def calculate_moves(agent_pos: Tuple[float, float], task_pos: Tuple[float, float]) -> float:
-    return ((task_pos[0] - agent_pos[0]) ** 2 + (task_pos[1] - agent_pos[1]) ** 2) ** 0.5
-
-def calculate_task_power(fire_level: float, fire_intensity: float) -> float:
-    return fire_level * fire_intensity
+import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
 
 def single_agent_policy(
-    agent_pos: Tuple[float, float],
-    agent_fire_reduction_power: float,
-    agent_suppressant_num: float,
-    other_agents_pos: List[Tuple[float, float]],
-    fire_pos: List[Tuple[float, float]],
-    fire_levels: List[float],
-    fire_intensities: List[float],
-    valid_action_space: List[List[int]]
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
 ) -> int:
-    
-    # Initialize maximum task power and chosen task index
-    max_task_power = -1
-    chosen_task_index = -1
-    
-    # Loop through each fire task
-    for task_index, (task_pos, fire_level, fire_intensity) in enumerate(zip(fire_pos, fire_levels, fire_intensities)):
-        
-        # calculate the distance from agent to the task
-        moves_to_task = calculate_moves(agent_pos, task_pos)
-        
-        # check if agent has enough suppressant to complete the task
-        if moves_to_task + 1 > agent_suppressant_num:
-            continue
-            
-        # calculate the task power of the fire task based on its level and intensity
-        task_power = calculate_task_power(fire_level, fire_intensity)
-        
-        # Add up the distances of all other agents to the task for collaborative firefighting
-        for other_agent_pos in other_agents_pos:
-            moves_to_task += calculate_moves(other_agent_pos, task_pos)
-            
-        # Balance the evaluation with a division to avoid overly patrolling in low intensity fire. The lower the value, the better
-        evaluation = moves_to_task / task_power
-        
-        # check if this task's evaluation is the lowest
-        if evaluation < max_task_power or max_task_power == -1:
-            max_task_power = evaluation
-            chosen_task_index = task_index
-    
-    return chosen_task_index
-```
+
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Temperatures
+    putout_temperature = 0.2
+    level_temperature = 0.1
+    intensity_temperature = 0.25 
+    distance_temperature = 0.1 
+
+    for task in range(num_tasks):
+
+        # calculate the euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # scoring function based on the weight of the fire, distance to the fire
+        # intensity of the fire and suppressants left with the agent
+        scores[task] = (
+            (fire_putout_weight[task]) * np.exp(-(fire_levels[task] / can_put_out_fire) * putout_temperature) +
+            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        )
+
+    # Return task index with maximum score
+    max_score_task = np.argmax(scores)
+    return max_score_task

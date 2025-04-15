@@ -3,7 +3,7 @@ You are a policy engineer designing decision functions for firefighting agents i
 Task: Create policies for agents to extinguish wildfires collaboratively with these conditions:
 - Fires emerge and spread based on realistic mechanics
 - Agents have limited suppressant that must be recharged
-- Agents must retreat when resources are depleted
+- Agents extinguish fires within a certain range, without considering movement cost
 
 Your goal: Maximize firefighting effectiveness while managing resource constraints.
 

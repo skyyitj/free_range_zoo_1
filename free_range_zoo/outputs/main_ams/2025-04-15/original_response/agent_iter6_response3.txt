@@ -1,0 +1,45 @@
+Based on the policy evaluation results, we can see that the policy function manages to control the fire and extinguish it in some cases. However, the number of burned out fires is still high, and the suppressant efficiency is relatively low. This indicates that the policy function is not optimally allocating resources among the agents or is not effectively prioritizing tasks.
+
+We may reduce the current sensitivity to distance and increase sensitivity to fire intensity and fire level. Also, we will apply a sigmoid function to the can_put_out_fire variable. This logistic sigmoid function will bring the can_put_out_fire variable into the range between 0 and 1 and reduce its influence when it's large. Finally, we will add a small bonus for having more available suppressant resources to incentivize conservation, which was missing in the previous policy.
+
+Here is the updated policy function considering these revisions:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    fire_putout_weight: List[float]             
+) -> int:
+
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = 1 / (1 + np.exp(-agent_suppressant_num * agent_fire_reduction_power))
+
+    # Adjusted temperature values
+    level_temperature = 0.5
+    intensity_temperature = 0.25
+    distance_temperature = 0.05  # Decreased sensitivity to distance
+
+    for task in range(num_tasks):
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        scores[task] = (
+            fire_putout_weight[task] * np.sqrt(agent_suppressant_num) +  # Added bonus  
+            np.exp(-fire_levels[task] * level_temperature) +
+            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        ) 
+
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+Remember, the optimal policy depends on various factors, including the layout of the grid, the starting positions of the fires, the initial distribution of the agents, etc. Therefore, it is essential to fine-tune and test the policy function in different scenarios to ensure optimal performance.

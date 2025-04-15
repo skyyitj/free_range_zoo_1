@@ -1,0 +1,59 @@
+Based on the policy evaluation results, we can gather that the average burning number is relatively high, indicating that there were still lots of fires left unhandled. The average putout number is lower than desirable, indicating that the agents do not successfully extinguish as many fires. It means that fires are not being handled in a timely and effective manner. The average rewards show a positive value, indicating some level of success, but we should work to increase this.
+
+Furthermore, the suppressant efficiency, which measures the ratio of fire intensity reduction to the amount of suppressant used, is a crucial indicator of how efficiently the agents are using their resources to fight the fires. The current suppressant efficiency is not as high as we would like, indicating that the agents are not using their resources very efficiently.
+
+To enhance these metrics, greater emphasis needs to be placed on reducing the fires' intensity and level, and using suppressant resources efficiently. With these observations, let's revise the policy function:
+
+```python
+import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity vale of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    # Adjusted temperature parameters
+    level_temperature = 0.50
+    intensity_temperature = 0.20
+    distance_temperature = 0.10 
+
+    for task in range(num_tasks):
+        # Calculate effective fire reduction after accounting for the agent's remaining fire suppression resources
+        effective_fire_reduction = min(agent_fire_reduction_power * agent_suppressant_num, fire_intensities[task])
+
+        # get euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # calculate score for each task using fire intensity, level, and distance
+        # all values are multiplied by suppressant_amount to penalize lower resources
+        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
+        scores[task] = (
+            np.exp(-fire_levels[task] * level_temperature) +
+            effective_fire_reduction * np.exp(-fire_intensities[task] / agent_fire_reduction_power * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        ) * fire_putout_weight[task]
+
+    # return the index of the task with the highest score
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+
+In this revised policy, we have increased the temperature parameters for fire intensity, fire level, and distance to make them have more impact on the task scores and thus potentially optimizing resource usage and firefighting efficiency. This should make the agents more efficient in reducing overall fire intensity and more effective in extinguishing fires.

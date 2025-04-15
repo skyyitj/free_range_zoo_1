@@ -1,0 +1,24 @@
+from typing import List, Dict, Tuple
+
+def validation(self, subgoals: List[str], object_positions: Dict[str, Tuple[float, float, float]]) -> Dict[str, bool]:
+    """
+    Evaluates whether each subgoal is achieved based on the 3D coordinates of objects.
+
+    Parameters:
+        subgoals (List[str]): List of subgoal names to validate
+        object_positions (Dict[str, Tuple[float, float, float]]): Dictionary mapping object names 
+            to their (x, y, z) coordinates
+
+    Returns:
+        Dict[str, bool]: Dictionary mapping each subgoal to its validation status (True if achieved, False otherwise)
+    """
+    # Initialize results dictionary
+    results = {subgoal: False for subgoal in subgoals}
+    
+    # TODO: Implement validation logic for each subgoal
+    # Example structure:
+    # for subgoal in subgoals:
+    #     if subgoal == "place_red_block_in_bowl":
+    #         results[subgoal] = check_block_in_bowl(object_positions)
+    
+    return results
