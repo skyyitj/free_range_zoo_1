@@ -1,56 +1,56 @@
-From the evaluation results, it seems that the strategy is not fully efficient. The average suppressant efficiency is relatively low considering the total used suppressant compared to the fire intensity change. It means that the agent is overusing its resources with respect to the actual requirement of the task. This is outlined by the low average reward per run, due to the relatively high fire burn-out number. Considering these results, it seems logical to recalibrate the weightage based on the fire intensities and fire_levels, and adjust the distance_temperature which might help the agent reach fires faster and manage its suppressant levels more adequately.
+The average putout number could be increased, and the burning number and burned out number could be decreased. The average used suppressant is relatively high, suggesting that the agents might not be using their resources efficiently. The average rewards could be enhanced and the fire intensity change could be made more negative.
+
+From the policy function and the `agent_distribution_temperature` that has been added to assign different agents to different fires, the policy function has considered the distance, fire level, fire intensity, and fire weight. Additionally, the reduction power of the agent and the number of agents assigned to a certain fire is also being taken into account.
+
+In this round of improvement, let's consider another key aspect: the capacity of agents, namely `agent_suppressant_num`, and try to arrange the tasks for each agent based on their remaining suppressant. This way, the agents might be dispatched to fires more efficiently. Each agent could be assigned to fires that they can put out more effectively based on the remaining suppressant amount. We should add a `capacity_temperature` to ensure the agent's capacity is also considered when calculating the score.
+
+Here's the updated function:
 
 ```python
-import numpy as np
-from typing import List, Tuple
-from scipy.spatial import distance
+from scipy.spatial.distance import cdist
 
 def single_agent_policy(
-    # === Agent Properties ===
-    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
-    agent_fire_reduction_power: float,           # How much fire the agent can reduce
-    agent_suppressant_num: float,                # Amount of fire suppressant available
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float,  
 
-    # === Team Information ===
-    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+    other_agents_pos: List[Tuple[float, float]], 
 
-    # === Fire Task Information ===
-    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
-    fire_levels: List[int],                      # Current intensity level of each fire
-    fire_intensities: List[float],               # Current intensity vale of each fire task
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                     
+    fire_intensities: List[float],               
 
-    # === Task Prioritization ===
-    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+    fire_putout_weight: List[float],             
 ) -> int:
+
+    num_tasks = len(fire_pos)
+    scores = []
     
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
+    dist_temperature = 0.3
+    level_temperature = 4.0
+    intensity_temperature = 1.5
+    weight_temperature = 0.4
+    effect_temperature = 0.4
+    agent_distribution_temperature = 0.3
+    capacity_temperature = 0.5
+    
+    # Calculate number of agents going to each fire
+    agent_distribution = [(cdist([agent_pos], fire_pos).argmin()) for agent_pos in other_agents_pos]
 
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+    for i in range(num_tasks):
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        tasks_capacity = agent_suppressant_num / max(fire_levels[i], 1)
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect/effect_temperature) \
+                -np.exp(agent_distribution.count(i)/agent_distribution_temperature) \
+                +np.exp(tasks_capacity/capacity_temperature)
 
-    # Adjusted temperature parameters
-    level_temperature = 0.25
-    intensity_temperature = 0.10
-    distance_temperature = 0.10 
+        scores.append(score)
 
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # calculate score for each task using fire intensity, level, and distance
-        # all values are multiplied by suppressant_amount to penalize lower resources
-        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            fire_distance * np.exp(fire_distance * distance_temperature)
-        ) * fire_putout_weight[task]
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
-
+    return np.argmax(scores)
 ```
-
-This adjusted policy reduces the weightage towards the fire_levels and tries to maintain better balance with the increase in the distance_temperature allowing the agent to reach fires sooner and more efficiently. Such a balanced approach should improve overall resource management and increase suppressant efficiency, which in turn increases the rewards and reduces the steps taken, thus optimizing the overall performance.
+This new improvement takes into account the capacity of each agent to handle the fires and should result in a more efficient task distribution and an overall improved performance.

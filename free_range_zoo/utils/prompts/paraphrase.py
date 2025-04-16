@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 import openai
 
-openai.api_key = "**********************"
+openai.api_key = "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"
 
 def paraphrase(string, num=1):
     messages = [

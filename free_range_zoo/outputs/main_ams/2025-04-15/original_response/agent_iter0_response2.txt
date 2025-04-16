@@ -1,3 +1,4 @@
+```python
 import numpy as np
 from typing import List, Tuple
 
@@ -18,37 +19,39 @@ def single_agent_policy(
     # === Task Prioritization ===
     fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
 ) -> int:
+    num_tasks = len(fire_pos)
+        
+    scores = []
+    for i in range(num_tasks):
+        # Task Distance
+        dist_y, dist_x = abs(fire_pos[i][0] - agent_pos[0]), abs(fire_pos[i][1] - agent_pos[1])
+        task_dist = np.sqrt(dist_y**2 + dist_x**2)  # Euclidean distance to task
+        
+        # Task Intensity
+        task_intensity = fire_intensities[i]
+        
+        # Fire Suppression Capability
+        suppressant_capacity = agent_suppressant_num * agent_fire_reduction_power
+        
+        # Task Weight
+        task_weight = fire_putout_weight[i]
+        
+        # Compute Score
+        firefighting_capacity_score = suppressant_capacity / (task_intensity + 1e-10)
+        distance_score = 1 / (task_dist + 1e-10)
+        reward_score = task_weight
+        
+        # Apply transformation and compute final task score
+        firefighting_capacity_temp = 1.0
+        distance_temp = 2.0
+        transformed_firefighting_capacity_score = np.exp(firefighting_capacity_score / firefighting_capacity_temp)
+        transformed_distance_score = np.exp(distance_score / distance_temp)
+        
+        task_score = transformed_firefighting_capacity_score * transformed_distance_score * reward_score        
+        scores.append(task_score)
 
-    num_tasks = len(fire_pos)  # Number of fires
-    task_scores = np.zeros(num_tasks)  # Initialize task scores
-
-    # Parameters to balance different factors in task scoring
-    distance_temperature = 1.0
-    fire_level_temperature = 1.0
-    fire_intensity_temperature = 1.0
-
-    # Calculate Euclidean distance to all fires
-    distances = [np.sqrt((fire_y - agent_pos[0]) ** 2 + (fire_x - agent_pos[1]) ** 2) for fire_y, fire_x in fire_pos]
-
-    for task_id in range(num_tasks):
-        # Calculate effective fire suppression. More effective suppression leads to better scoring
-        effective_suppression = min(agent_fire_reduction_power * agent_suppressant_num, fire_intensities[task_id])
-
-        # Factor 1: Distance to fire (less is better)
-        distance_score = np.exp(-distances[task_id] / distance_temperature)
-
-        # Factor 2: Fire level (more is worse)
-        fire_level_score = np.exp(-fire_levels[task_id] / fire_level_temperature)
-
-        # Factor 3: Fire intensity (more is worse)
-        fire_intensity_score = np.exp(-fire_intensities[task_id] / fire_intensity_temperature)
-
-        # Factor 4: Fire suppression (more is better, scaled by task reward weight)
-        suppression_score = fire_putout_weight[task_id] * effective_suppression
-
-        # Final task score: Multiplicative integration of all factors
-        task_scores[task_id] = distance_score * fire_level_score * fire_intensity_score * suppression_score
-
-    # Choose task with highest score
-    chosen_task = np.argmax(task_scores)
-    return chosen_task
+    # Select the task with the maximum score.
+    best_task = np.argmax(scores)
+    
+    return best_task
+```

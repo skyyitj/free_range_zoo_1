@@ -24,7 +24,7 @@ import openai
 
 
 
-openai.api_key = "sk-**********************"
+openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 openai.api_base = "https://xiaoai.plus/v1"
 
 @hydra.main(config_path="cfg", config_name="config")

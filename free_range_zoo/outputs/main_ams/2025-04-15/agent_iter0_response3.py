@@ -1,48 +1,44 @@
-import numpy as np
-from typing import List, Tuple
-from scipy.spatial import distance
-
 def single_agent_policy(
     # === Agent Properties ===
-    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
-    agent_fire_reduction_power: float,           # How much fire the agent can reduce
-    agent_suppressant_num: float,                # Amount of fire suppressant available
+    agent_pos: Tuple[float, float],                 # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,              # How much fire the agent can reduce
+    agent_suppressant_num: float,                   # Amount of fire suppressant available
 
     # === Team Information ===
-    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+    other_agents_pos: List[Tuple[float, float]],    # Positions of all other agents [(y1, x1), (y2, x2), ...]
 
     # === Fire Task Information ===
-    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
-    fire_levels: List[int],                    # Current intensity level of each fire
-    fire_intensities: List[float],               # Current intensity value of each fire task
+    fire_pos: List[Tuple[float, float]],            # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                         # Current intensity level of each fire
+    fire_intensities: List[float],                  # Current intensity value of each fire task
 
     # === Task Prioritization ===
-    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+    fire_putout_weight: List[float],                # Priority weights for fire suppression tasks
 ) -> int:
+    import numpy as np
+
+    agent_pos = np.array(agent_pos)                  # Make it easier to vectorize arithmetic operations
+    fire_pos = np.array(fire_pos)                    # Convert to vector for better computation
     
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
+    dists_to_fires = np.linalg.norm(agent_pos - fire_pos, axis=1)       # Calculate distance of agent from each fire
+    suppressant_needed = fire_intensities / agent_fire_reduction_power  # Calculate how much suppressant is needed to put each fire out
+    
+    # Specify temperature parameters for exponential scoring
+    temp_dist, temp_intens, temp_weight = 0.1, 0.1, 0.1
+    
+    # Score tasks based on distance, intensity, and priority weight
+    scores = (np.exp(-temp_dist * dists_to_fires) +
+              np.exp(-temp_intens * suppressant_needed) +
+              np.exp(temp_weight * np.array(fire_putout_weight))
+             )
+    
+    # Filter out tasks that can't be completed with available resources
+    feasible_tasks = np.where((suppressant_needed <= agent_suppressant_num) & (fire_levels > 0))[0]
+    feasible_scores = scores[feasible_tasks]
+    
+    if len(feasible_scores)==0:   # All tasks are too hard or fire has already been put out
+        return None
 
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Temperature parameters, these are arbitrary and can be adjusted
-    level_temperature = 0.05
-    intensity_temperature = 0.05
-    distance_temperature = 0.01
-
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # calculate score for each task using fire intensity, level, and distance
-        # all values are multiplied by suppressant_amount to penalize lower resources
-        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            np.exp(fire_distance * distance_temperature)) * fire_putout_weight[task]
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    else:  # Return highest-scoring feasible task
+        idx_best_task = np.argmax(feasible_scores)
+        return feasible_tasks[idx_best_task]

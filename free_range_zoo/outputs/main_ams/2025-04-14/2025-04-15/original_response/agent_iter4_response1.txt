@@ -1,0 +1,56 @@
+The new policy function considering the analisys of the previous results:
+
+```python
+import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity vale of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Adjusted temperature parameters
+    level_temperature = 0.30
+    intensity_temperature = 0.10
+    distance_temperature = 0.07 
+
+    for task in range(num_tasks):
+
+        # get euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # calculate score for each task using fire intensity, level, and distance
+        # all values are multiplied by suppressant_amount to penalize lower resources
+        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
+        scores[task] = (
+            np.exp(-fire_levels[task] * level_temperature) +
+            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        ) * fire_putout_weight[task]
+
+    # return the index of the task with the highest score
+    max_score_task = np.argmax(scores)
+    return max_score_task
+
+```
+
+This revised policy function has increased the temperature parameters for fire intensity, fire level, and distance to give them even more impact on the score. The aim should be to make the agent better at handling fires with higher intensity and level and also moving towards fires that are closer. This should incentivize better resource allocation, improving the efficiency of the agent's fire suppression efforts. Furthermore, raising the distance temperature may also help in minimizing the number of steps taken to complete the task. The changes should also make the agent better at prioritizing tasks with higher weights.

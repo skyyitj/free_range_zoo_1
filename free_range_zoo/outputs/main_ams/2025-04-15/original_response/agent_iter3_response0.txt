@@ -1,17 +1,8 @@
-Revised Policy:
+From the feedback metrics, the agent is yet to efficiently extinguish fires while conserving resources. The intensity and spread of fires are reducing (Fire Intensity Change: -4.00), however, more fires are burning out without being controlled (Burnedout Number: 3.10), and we can try to use the suppressant more efficiently as well (Used Suppressant: 16.80).
 
-Based on the evaluation results, I'll make the following adjustments to the policy function:
+To improve these metrics, the agent should prioritize fires that can be extinguished with limited resources. A new component in the score calculates the potential effect of the agent's suppressant on the fire intensity. Also, an attempt will be made to reduce the distance temperature to shift focus to closer fires, reduce level and intensity temperature, and elevate effect and weight temperature to pay more attention to reachable, higher priority fires and potential influences of agent's suppressant.
 
-1. Increase the importance of fire intensity reduction: the policy is not fully efficient at reducing fire intensities.
-To improve this, I'll increase the temperature parameter for fire intensity in calculating the task score. It will prioritize tasks that can yield a larger reduction in fire intensity.
-
-2. Improve suppressant efficiency: it seems like we're depleting resources rather quickly. 
-To make our suppressant last longer, I'll reduce the direct influence of 'fire_putout_weight' in score calculation. This will ensure agents don't rush to extinguish fires with larger rewards but higher suppressant cost.
-
-3. Increase the urgency of near fires: looking at the burning and burnt-out numbers, agents seem to be missing nearby threats. 
-I'll add a larger penalty for distant fires to make sure agents take care of imminent dangers first.
- 
-Let's implement these changes:
+The new policy function looks like:
 
 ```python
 def single_agent_policy(
@@ -31,32 +22,32 @@ def single_agent_policy(
     # === Task Prioritization ===
     fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
 ) -> int:
+    num_tasks = len(fire_pos)                    # Number of tasks
+    scores = []                                  # Scores for each task
     
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
-
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Adjusted temperature parameters
-    level_temperature = 0.2
-    intensity_temperature = 0.1  # increased
-    distance_temperature = 0.05  # increased
-
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # calculate score for each task using fire intensity, level, and distance
-        # reduced the direct influence of 'fire_putout_weight' on score
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            np.exp(fire_distance * distance_temperature)
-        ) * np.sqrt(fire_putout_weight[task])
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    # Temperature parameters for the exponential functions
+    dist_temperature = 0.15
+    level_temperature = 2.0
+    intensity_temperature = 0.625
+    weight_temperature = 1.0
+    effect_temperature = 2.0
+    
+    # Iterate over each task
+    for i in range(num_tasks):
+        # Calculate distance to fire
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        # Calculate potential effects of agent's suppressant on the fire intensity
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        # Calculate score based on distance, fire level and intensity, and task weight
+        # Use exponential transformation for normalization and weighting, with negative scores for minimization
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect / effect_temperature)
+        scores.append(score)
+        
+    # Return the task index with the highest score
+    return np.argmax(scores)
 ```
-Please execute this revised policy function and provide new performance feedback.
+This revised policy function will hopefully improve our metrics by extinguishing more fires while conserving resources and enhancing team collaboration.

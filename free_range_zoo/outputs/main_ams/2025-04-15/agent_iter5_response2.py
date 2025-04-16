@@ -1,49 +1,45 @@
-import numpy as np
-from typing import List, Tuple
-from scipy.spatial import distance
+from scipy.spatial.distance import cdist
 
 def single_agent_policy(
-    # === Agent Properties ===
-    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
-    agent_fire_reduction_power: float,           # How much fire the agent can reduce
-    agent_suppressant_num: float,                # Amount of fire suppressant available
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float,  
 
-    # === Team Information ===
-    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+    other_agents_pos: List[Tuple[float, float]], 
 
-    # === Fire Task Information ===
-    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
-    fire_levels: List[int],                      # Current intensity level of each fire
-    fire_intensities: List[float],               # Current intensity vale of each fire task
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                     
+    fire_intensities: List[float],               
 
-    # === Task Prioritization ===
-    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+    fire_putout_weight: List[float],             
 ) -> int:
+
+    num_tasks = len(fire_pos)
+    scores = []
     
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
+    dist_temperature = 0.3
+    level_temperature = 4.0
+    intensity_temperature = 1.5
+    weight_temperature = 0.4
+    effect_temperature = 0.4
+    agent_distribution_temperature = 0.3
+    capacity_temperature = 0.5
+    
+    # Calculate number of agents going to each fire
+    agent_distribution = [(cdist([agent_pos], fire_pos).argmin()) for agent_pos in other_agents_pos]
 
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+    for i in range(num_tasks):
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        tasks_capacity = agent_suppressant_num / max(fire_levels[i], 1)
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect/effect_temperature) \
+                -np.exp(agent_distribution.count(i)/agent_distribution_temperature) \
+                +np.exp(tasks_capacity/capacity_temperature)
 
-    # Adjusted temperature parameters
-    level_temperature = 0.25
-    intensity_temperature = 0.10
-    distance_temperature = 0.10 
+        scores.append(score)
 
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # calculate score for each task using fire intensity, level, and distance
-        # all values are multiplied by suppressant_amount to penalize lower resources
-        # 'fire_putout_weight' is directly applied as a multiplier to prioritize tasks
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            fire_distance * np.exp(fire_distance * distance_temperature)
-        ) * fire_putout_weight[task]
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    return np.argmax(scores)

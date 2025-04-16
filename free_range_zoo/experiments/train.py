@@ -21,6 +21,7 @@ from free_range_zoo.envs import wildfire_v0
 from free_range_zoo.wrappers.action_task import action_mapping_wrapper_v0
 import torch
 import pickle
+import random
 
 # import sys
 #
@@ -44,8 +45,11 @@ from datetime import datetime
 
 workspace_dir = Path.cwd()
 print('workspace_dir:', workspace_dir)
-with open(os.path.join("/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS1.pkl"), "rb") as file:
+rd_num=random.randint(1, 3)
+print('Configuration: WS{}'.format(rd_num))
+with open(os.path.join(f"/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS{rd_num}.pkl"), "rb") as file:
     wildfire_configuration = pickle.load(file)
+
 
 env = wildfire_v0.parallel_env(
     max_steps=100,
@@ -62,7 +66,7 @@ observations, infos = env.reset()
 
 import inspect
 from free_range_zoo.envs.wildfire.baselines import GenerateAgent
-
+#from free_range_zoo.envs.wildfire.baselines import WeakestBaseline
 agents = {agent_name: GenerateAgent(env.action_space(agent_name), parallel_envs=1, configuration=wildfire_configuration)
           for agent_name in env.agents}
 # agents = {agent_name: StrongestBaseline(env.action_space(agent_name), parallel_envs=1)
@@ -244,14 +248,14 @@ for test_run in range(10):
 average_fire_intensity_change = np.mean(results)
 # average_total_rewards = np.mean(total_rewards_list)
 average_suppressant_efficiency = np.mean(efficiency_records)
-average_used_suppressant_number = np.mean(total_suppressant_before)
+# average_used_suppressant_number = np.mean(total_suppressant_before)
 print("\nAverage Evaluate Metrics:")
 
 # print(f"  - Average Rewards: {average_total_rewards:.2f}")
 for key in all_metrics.keys():
     print(f"  - Average {key}: {np.mean(all_metrics[key]):.2f}")
 print(f"  - Average Fire Intensity Change: {average_fire_intensity_change:.2f}")
-print(f"  - Average Used Suppressant Number: {average_used_suppressant_number:.2f}")
+# print(f"  - Average Used Suppressant Number: {average_used_suppressant_number:.2f}")
 print(f"  - Average Suppressant Efficiency: {average_suppressant_efficiency:.4f} intensity/suppressant")
 
 # 将结果写入 CSV 文件
@@ -260,8 +264,8 @@ csv_path = "average_results.csv"
 # 检查文件是否存在以及是否为空
 file_exists = os.path.isfile(csv_path)
 file_is_empty = os.path.getsize(csv_path) == 0 if file_exists else True
-keys_list = list(all_metrics.keys()) + ['Average_fire_intensity_change', 'Average_used_suppressant_number', 'Average Suppressant Efficiency']
-values_list = list(all_metrics.values()) + [average_fire_intensity_change, average_used_suppressant_number, average_suppressant_efficiency]
+keys_list = list(all_metrics.keys()) + ['Average_fire_intensity_change', 'Average Suppressant Efficiency']
+values_list = list(all_metrics.values()) + [average_fire_intensity_change, average_suppressant_efficiency]
 
 # 将结果写入 CSV 文件
 with open(csv_path, mode='a', newline='') as file:

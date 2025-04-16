@@ -1,25 +1,25 @@
 /home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
   return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
 workspace_dir: /home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/outputs/main_ams/2025-04-15
-test_run: 0 step_counter: 3
-test_run: 1 step_counter: 3
-test_run: 2 step_counter: 3
-test_run: 3 step_counter: 11
-test_run: 4 step_counter: 2
-test_run: 5 step_counter: 2
-test_run: 6 step_counter: 11
+Configuration: WS1
+test_run: 0 step_counter: 2
+test_run: 1 step_counter: 11
+test_run: 2 step_counter: 2
+test_run: 3 step_counter: 8
+test_run: 4 step_counter: 20
+test_run: 5 step_counter: 3
+test_run: 6 step_counter: 3
 test_run: 7 step_counter: 2
-test_run: 8 step_counter: 3
-test_run: 9 step_counter: 8
+test_run: 8 step_counter: 5
+test_run: 9 step_counter: 7
 
 Average Evaluate Metrics:
-  - Average Burning Number: 3.85
-  - Average Putout Number: 1.30
-  - Average Burnedout Number: 1.10
+  - Average Burning Number: 3.68
+  - Average Putout Number: 1.20
+  - Average Burnedout Number: 1.50
   - Average Fire Intensity Change: -4.00
-  - Average Used Suppressant: 8.80
-  - Average Steps: 4.80
-  - Average Rewards: 11.70
-  - Average Fire Intensity Change: -1.26
-  - Average Used Suppressant Number: 2.00
-  - Average Suppressant Efficiency: 0.7619 intensity/suppressant
+  - Average Used Suppressant: 10.70
+  - Average Steps: 6.30
+  - Average Rewards: 8.10
+  - Average Fire Intensity Change: -1.11
+  - Average Suppressant Efficiency: 0.8841 intensity/suppressant

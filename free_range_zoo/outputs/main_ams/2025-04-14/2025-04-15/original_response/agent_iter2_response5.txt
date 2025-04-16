@@ -1,0 +1,49 @@
+In order to improve the policy function performance, we could adjust temperature scales and values, or the expression of policy components, based on the performance metrics.
+
+Considering the metrics results, it seems that the efficiency of suppressant usage can be improved further. We may achieve this by adjusting the intensity_temperature which is related to the suppressant usage, or by modifying the expression of the score that related to the fire's level and intensity.
+
+We also noticed that the putout number is relatively low, meaning the policy function is not so efficient in extinguishing fires. One way to increase the putout number could be to enhance the impact of the level of the fire and suppressant availability in our score calculation. 
+
+Taking into account the above discussion, let's increase the level_temperature, which expects agents to pay more attention to fires with higher levels. Furthermore, we'll reduce intensity_temperature, which will make agents less sensitive to fire intensity and more willing to use suppressants. In addition, we'll introduce a new component into the score calculation, which gives higher priority to the tasks that the current agent's suppressant is enough to accomplish.
+
+Here is the updated policy function:
+``` python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,          
+    agent_suppressant_num: float,                
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    fire_putout_weight: List[float]
+) -> int:
+    
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Increase level_temperature, reduce intensity_temperature
+    level_temperature = 0.3
+    intensity_temperature = 0.05
+    distance_temperature = 0.01
+
+    for task in range(num_tasks):
+
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        scores[task] = (
+            np.exp(-fire_levels[task] * level_temperature) +
+            np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature)
+            if can_put_out_fire >= fire_intensities[task] else 0
+            - np.exp(fire_distance * distance_temperature)
+        ) * fire_putout_weight[task]
+    
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+By tuning the temperature scale and changing the scoring function, we expect a better policy performance next time.

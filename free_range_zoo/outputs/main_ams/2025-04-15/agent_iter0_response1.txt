@@ -1,14 +1,25 @@
 /home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
   return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
 workspace_dir: /home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/outputs/main_ams/2025-04-15
-Traceback (most recent call last):
-  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 136, in <module>
-    agent_name: agents[agent_name].act(action_space=env.action_space(agent_name))
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 102, in act
-    maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 190, in single_agent_policy
-    return chosen_task-b
-                       ^
-NameError: name 'b' is not defined
+Configuration: WS2
+test_run: 0 step_counter: 14
+test_run: 1 step_counter: 6
+test_run: 2 step_counter: 8
+test_run: 3 step_counter: 20
+test_run: 4 step_counter: 15
+test_run: 5 step_counter: 17
+test_run: 6 step_counter: 14
+test_run: 7 step_counter: 2
+test_run: 8 step_counter: 2
+test_run: 9 step_counter: 8
+
+Average Evaluate Metrics:
+  - Average Burning Number: 4.14
+  - Average Putout Number: 2.20
+  - Average Burnedout Number: 2.90
+  - Average Fire Intensity Change: -4.00
+  - Average Used Suppressant: 14.30
+  - Average Steps: 10.60
+  - Average Rewards: 9.90
+  - Average Fire Intensity Change: -0.69
+  - Average Suppressant Efficiency: 1.1667 intensity/suppressant

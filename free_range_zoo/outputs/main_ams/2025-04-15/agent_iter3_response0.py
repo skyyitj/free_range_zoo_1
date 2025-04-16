@@ -15,30 +15,30 @@ def single_agent_policy(
     # === Task Prioritization ===
     fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
 ) -> int:
+    num_tasks = len(fire_pos)                    # Number of tasks
+    scores = []                                  # Scores for each task
     
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
-
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Adjusted temperature parameters
-    level_temperature = 0.2
-    intensity_temperature = 0.1  # increased
-    distance_temperature = 0.05  # increased
-
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # calculate score for each task using fire intensity, level, and distance
-        # reduced the direct influence of 'fire_putout_weight' on score
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            np.exp(fire_distance * distance_temperature)
-        ) * np.sqrt(fire_putout_weight[task])
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    # Temperature parameters for the exponential functions
+    dist_temperature = 0.15
+    level_temperature = 2.0
+    intensity_temperature = 0.625
+    weight_temperature = 1.0
+    effect_temperature = 2.0
+    
+    # Iterate over each task
+    for i in range(num_tasks):
+        # Calculate distance to fire
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        # Calculate potential effects of agent's suppressant on the fire intensity
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        # Calculate score based on distance, fire level and intensity, and task weight
+        # Use exponential transformation for normalization and weighting, with negative scores for minimization
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect / effect_temperature)
+        scores.append(score)
+        
+    # Return the task index with the highest score
+    return np.argmax(scores)

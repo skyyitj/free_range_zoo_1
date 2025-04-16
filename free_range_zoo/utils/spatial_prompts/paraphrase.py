@@ -4,7 +4,7 @@ from pathlib import Path
 import openai
 # import anthropic
 
-openai.api_key = "**********************"
+openai.api_key = "sk-JIevo5uxaaw89ff02d53Cb2144E64dC6Ac1fD45dAfF2E216"
 openai.api_base = "https://api.lqqq.ltd/v1"
 
 

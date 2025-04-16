@@ -12,7 +12,7 @@ Task Rules:
 2. Fire Dynamics:
    - Fire intensity decreases based on agent's suppressant use
    - Remaining fire = Current intensity - (Agent's suppressant × Reduction power)
-   - If fire intensity remains positive, it spreads to neighboring grid cells
+   - If fire intensity remains positive, it is possible to spread to neighboring grid cells
    - If fire level exceeds threshold, it self-extinguishes but penalizes agents
 
 3. Resource Management:

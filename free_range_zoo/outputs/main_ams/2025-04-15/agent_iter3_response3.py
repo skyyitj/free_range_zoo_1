@@ -1,38 +1,34 @@
 def single_agent_policy(
-    agent_pos: Tuple[float, float],
-    agent_fire_reduction_power: float,
-    agent_suppressant_num: float,
-    other_agents_pos: List[Tuple[float, float]],
-    fire_pos: List[Tuple[float, float]],
-    fire_levels: List[int],
-    fire_intensities: List[float],
-    fire_putout_weight: List[float],
+    agent_pos: Tuple[float, float],             
+    agent_fire_reduction_power: float,          
+    agent_suppressant_num: float,               
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    fire_putout_weight: List[float]
 ) -> int:
-
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
-
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Adjusted temperature parameters
-    level_temperature = 0.15
-    intensity_temperature = 0.07
-    distance_temperature = 0.04
-
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        effective_suppressant_amount = can_put_out_fire / (fire_distance + 1)
-
-        # modified score calculation
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            np.exp(-fire_intensities[task] / effective_suppressant_amount * intensity_temperature) -
-            fire_distance * np.exp(fire_distance * distance_temperature)
-        ) * fire_putout_weight[task]
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    
+    num_tasks = len(fire_pos)
+    scores = []
+    
+    dist_temperature = 0.2
+    level_temperature = 3.0
+    intensity_temperature = 2.0
+    weight_temperature = 0.5
+    effect_temperature = 0.1
+    
+    for i in range(num_tasks):
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect / effect_temperature)
+        scores.append(score)
+        
+    return np.argmax(scores)

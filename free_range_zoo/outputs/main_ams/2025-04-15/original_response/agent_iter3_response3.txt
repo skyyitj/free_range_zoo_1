@@ -1,53 +1,47 @@
-From the evaluation results, it is clear that our policy function currently has room for improvement. Specifically, the metrics indicate that while the agents are managing to reduce fire intensity and influence some fires, there are still too many fires burning or burning out unaddressed. Additionally, the suppressant efficiency and resources consumed can be optimized further.
+Looking at the results, there are a few key observations:
 
-Keeping these observations in mind, let's adjust the policy function:
+The Average Burning Number is 3.66, which means on average there are about 4 locations where fires are not suppressed per step. This number is relatively high, suggesting that the policy may not be assigning resources effectively. There might be too many fires left unhandled.
 
-We could consider adjusting the temperature parameters to change the influence of fire level, fire intensity, and distance on the decision-making process. For example, increasing the `fire_distance` temperature will make the agent favor tasks near its location. This would also increase efficiency in using suppressant.
+The Average Fire Intensity Change is -4.00, implying that the fire's intensity is reduced by an average of 4 units per step. However, compared with the average used suppressant which is 16.80, it signifies that the effect of suppressant is not fully utilized. The Average Suppressant Efficiency is 0.8252 intensity/suppressant which also verifies this observation. 
 
-Another potential adjustment is to the way we calculate the task scores. For example, we could multiply the distance and suppression amount factor together, to put a higher penalty when agent resources are low or when the fire is too far.
+Although the Average Rewards indicate that there are rewards accumulated, the Average Steps is 11.8 which is also a little high. The agent could be potentially improving the time it takes to extinguish the fire. 
 
-Another tactic might be to adjust the `suppressant_amount` calculation. We could divide  suppressant amount by fire intensity to further penalize taking on high intensity fires when resources are low.
-
-Let's implement these changes:
+Based on these points, it appears that the policy function could be improved by changing the temperature for distance, suppression effect and fire levels. This might encourage more efficient suppressant usage and more realistic task assignment:
 
 ```python
 def single_agent_policy(
-    agent_pos: Tuple[float, float],
-    agent_fire_reduction_power: float,
-    agent_suppressant_num: float,
-    other_agents_pos: List[Tuple[float, float]],
-    fire_pos: List[Tuple[float, float]],
-    fire_levels: List[int],
-    fire_intensities: List[float],
-    fire_putout_weight: List[float],
+    agent_pos: Tuple[float, float],             
+    agent_fire_reduction_power: float,          
+    agent_suppressant_num: float,               
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    fire_putout_weight: List[float]
 ) -> int:
-
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
-
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Adjusted temperature parameters
-    level_temperature = 0.15
-    intensity_temperature = 0.07
-    distance_temperature = 0.04
-
-    for task in range(num_tasks):
-
-        # get euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        effective_suppressant_amount = can_put_out_fire / (fire_distance + 1)
-
-        # modified score calculation
-        scores[task] = (
-            np.exp(-fire_levels[task] * level_temperature) +
-            np.exp(-fire_intensities[task] / effective_suppressant_amount * intensity_temperature) -
-            fire_distance * np.exp(fire_distance * distance_temperature)
-        ) * fire_putout_weight[task]
-
-    # return the index of the task with the highest score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+    
+    num_tasks = len(fire_pos)
+    scores = []
+    
+    dist_temperature = 0.2
+    level_temperature = 3.0
+    intensity_temperature = 2.0
+    weight_temperature = 0.5
+    effect_temperature = 0.1
+    
+    for i in range(num_tasks):
+        dist = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        effect = agent_suppressant_num * agent_fire_reduction_power / max(fire_intensities[i], 1)
+        score = -np.exp(-dist/dist_temperature) \
+                -np.exp(-fire_levels[i]/level_temperature) \
+                -np.exp(-fire_intensities[i]/intensity_temperature) \
+                +np.exp(fire_putout_weight[i]/weight_temperature) \
+                +np.exp(effect / effect_temperature)
+        scores.append(score)
+        
+    return np.argmax(scores)
 ```
-With these adjustments, we are hoping to reduce the number of burning and burned-out fires, and to improve the suppressant efficiency and rewards.
+This edit lowers the distance temperature, meaning tasks with closer fire will be prioritized. Also the level and intensity temperature are indirectly reduced so that tasks with higher fire levels or intensities will be preferred. Lastly, the effects of suppressant weights more in the final score, forcing the agent to pay more attention to its resource usage.

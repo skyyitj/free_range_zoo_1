@@ -1,0 +1,65 @@
+Looking at the metrics, the policy seems not to be optimal in terms of suppressant used and suppressant efficiency. We are seeing a high Average Used Suppressant with relatively low Average Suppressant Efficiency. The rewards are also not optimal which tells us room for improvement.
+
+This indicates that the agent might be using more resources than necessary. Let's try to introduce efficiency in suppressant usage.
+
+To optimize suppressant usage, we can establish a dynamic balance between a reduction in fire intensity and suppressant use in the task score calculation. Furthermore, by using the divisor of fire intensities and can_put_out_fire as the core component of the score calculation, we can better balance the agent's firefighting capacity, the immediate suppression need, and the availability of suppressants.
+
+Suppressant efficiency can be optimized by preferring fires with higher intensity for the currently available suppressant.
+
+Here is the proposed function:
+
+```python
+import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity vale of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    
+    num_tasks = len(fire_levels)
+    scores = np.zeros(num_tasks)
+
+    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
+
+    # Adjusted temperature parameters
+    level_temperature = 0.30
+    intensity_temperature = 0.10
+    distance_temperature = 0.07 
+    suppressant_temperature = 0.40
+
+    for task in range(num_tasks):
+
+        # get euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
+
+        # calculate score for each task using fire intensity, level, and distance
+        # all values are multiplied by suppressant_amount to penalize lower resources
+        # we also introduced a new score modifier that penalizes tasks where the required
+        # suppressant amount (fire intensity) exceeds the available suppressant
+        scores[task] = (
+            np.exp(-fire_levels[task] * level_temperature) +
+            (agent_suppressant_num - fire_intensities[task]) * np.exp(-(fire_intensities[task] - can_put_out_fire) / suppressant_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        ) * fire_putout_weight[task]
+
+    # return the index of the task with the highest score
+    max_score_task = np.argmax(scores)
+    return max_score_task
+```
+
+This function now includes a new score modifier that takes into account available agent suppressant and fire intensity. The suppressant modifier penalizes task scores where the suppressant required for suppression exceeds the available amount. This should lead to more efficient suppressant usage, choosing fires with firefighting power this agent has, and thereby result in higher rewards.
