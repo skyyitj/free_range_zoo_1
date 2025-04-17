@@ -1,0 +1,35 @@
+# Task Description
+Agents decide how to use limited suppressant resources to collaboratively put out wildfire tasks that appear both spontaneously and due to realistic fire-spread mechanics. Agents must temporarily disengage when they run out of limited suppressant to recharge before rejoining the firefighting efforts.
+
+# Task Rules:
+1. Assignment Constraints:
+   - Each agent can only be assigned to one fire location per decision step
+   - Agents can be assigned to any fire location regardless of distance
+
+2. Fire Dynamics:
+   - Fire intensity decreases based on agent's suppressant use
+   - Remaining fire = Current intensity - (Agent's suppressant × Reduction power)
+   - If fire intensity remains positive, it spread to neighboring grid cells with a given probability
+   - If fire level exceeds threshold {threshold}, it self-extinguishes but penalizes agents
+
+3. Resource Management:
+   - Agents have limited suppressant resources
+   - Suppressant is consumed when fighting fires
+   - Strategic resource allocation is crucial
+
+4. Reward Structure:
+   - Each fire location has an associated reward weight (float)
+   - Reward weights are provided as regular floating-point numbers
+   - Example: fire_putout_weight = [4.0, 4.0] for two fire locations
+
+   
+# Objective
+Create a policy function that optimally assigns firefighting tasks to each agent according to the following evaluations. In the Wildfire Suppression domain, this includes the rewards, the total number of fires extinguished (the more the better) vs. burned out (the less the better), the average duration of each fire and the efficiency of limited suppressant usage by agents. 
+
+# Requirements
+1. Use the exact policy signature: {policy_signature}
+2. Only modify the function body
+3. Do not alter the function signature
+
+
+

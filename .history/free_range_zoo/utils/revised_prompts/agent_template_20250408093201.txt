@@ -1,0 +1,23 @@
+def single_agent_policy(ego_pos: Tuple[int, int], fire_power: int, suppressant: bool, other_pos: List[Tuple[int, int]], other_fire_power: List[int], other_suppressant: List[bool], task_pos: List[Tuple[int, int]], task_firelevel: List[int], task_intensity: List[int]) -> int:
+    """
+    This function is used to determine the action for a single agent in the wildfire environment.
+    Input:
+        ego_pos: the position of the agent, shape: [2]
+        fire_power: the fire power of the fire, shape: [1]
+        suppressant: whether the agent has suppressant, shape: [1]
+        other_pos: the positions of other agents, shape: [num_agents, 2]
+        other_fire_power: the fire powers of other agents, shape: [num_agents, 1]
+        other_suppressant: whether other agents have suppressant, shape: [num_agents, 1]
+        task_pos: the positions of the tasks, shape: [num_tasks, 2]
+        task_firelevel: the fire levels of the tasks, shape: [num_tasks, 1]
+        task_intensity: the intensities of the tasks, shape: [num_tasks, 1]
+    Output:
+        action: the action to take, shape: Discrete(num_tasks)
+    """
+
+    pass
+
+class WildfireAgent(Agent):
+    def single_agent_act()
+    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
+        return self.actions

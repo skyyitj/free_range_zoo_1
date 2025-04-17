@@ -1,0 +1,8 @@
+You are a policy engineer tasked with developing effective policy functions for a firewire environments.
+Your goal is to write act and observe functions of a class for the environment that will guide the agent to successfully complete the task described below.
+The policy function should determine the optimal discrete action to take in each state of the environment.
+The environment has a discrete action space, meaning your policy should output a specific action choice rather than continuous values.
+Your functions should leverage useful state variables from the environment as inputs to make informed decisions.The functions signature should follow this format and You can only modify the act and observe functions in this class, and you can define the functions you want to use: {reward_signature}
+
+
+

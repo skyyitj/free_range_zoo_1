@@ -1,0 +1,31 @@
+These following metrics are used to evaluate the performance of the policy function:
+
+1. Rewards: This metric represents the average rewards accumulated by all agents.
+It is a direct measure of the overall success of the agents' actions.
+A higher value indicates better performance, as it suggests that
+the agents are effectively achieving their objectives and maximizing their rewards.
+
+Fire Intensity Change: This metric measures the average change in fire intensity per step.
+It reflects the agents' ability to control and reduce the fire's severity. A higher value is preferable,
+ as it indicates that the agents are successfully mitigating the fire's impact over time.
+
+Used Suppressant: This metric tracks the average amount of suppressant used by the agents.
+It is a measure of resource efficiency. A lower value is better, as it suggests that
+the agents are using their resources timely judiciously and effectively to control the fire.
+
+Suppressant Efficiency：It is calculated as the ratio of the reduction in fire intensity to the amount of suppressant used.
+A higher value is better.
+
+Burning Number: This metric represents the average number of fires that remain unhandled by the agents.
+A lower value is desirable.
+
+Putout Number: his metric measures the average number of fires successfully extinguished by the agents.
+A higher value is better.
+
+Burnedout Number: This metric tracks the average number of fires that have burned out without being handled by the agents.
+A lower value is preferable.
+
+Steps: This metric indicates the average number of steps taken to complete the task.
+A lower value is desirable.
+
+

@@ -1,0 +1,3 @@
+class WildfireAgent(Agent):
+    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
+        return self.actions

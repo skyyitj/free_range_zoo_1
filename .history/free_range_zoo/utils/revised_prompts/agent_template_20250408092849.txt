@@ -1,0 +1,6 @@
+def single_agent_policy(ego_pos: Tuple[int, int], fire_power: int, suppressant: bool, other_pos: List[Tuple[int, int]]) -> Tuple[int, int]:
+
+class WildfireAgent(Agent):
+    def single_agent_act()
+    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
+        return self.actions

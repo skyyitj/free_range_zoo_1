@@ -1,0 +1,9 @@
+Please carefully analyze the policy feedback and provide a new, improved policy function that can better solve the task. Some helpful tips for analyzing the policy feedback:
+    (1) You can start with "let's think step by step", and then compare the different results of relative good and relative bad policy.
+    (2) Look at each metric individually and think about how can you improve it.
+    (3) If the total reward maintains negative, then you must rewrite the entire policy function
+    (4) If the values for a certain metric component are not satisfying, then this means the written policy function is not able to accomplish the task goal. You may consider:
+        (a) Changing the temperature scale or value of the related policy component so that this metric can be balanced
+        (b) Re-writing the related policy component 
+        (c) Discarding the policy component or add a new policy component 
+Now, output the revised good policy function.

@@ -1,0 +1,14 @@
+# Task Description
+Agents decide how to use limited suppressant resources to collaboratively put out wildfire tasks that appear both spontaneously and due to realistic fire-spread mechanics. Agents must temporarily disengage when they run out of limited suppressant to recharge before rejoining the firefighting efforts.
+
+# 
+# Objective
+Create a policy function that optimally assigns firefighting tasks to each agent according to the following evaluations. In the Wildfire Suppression domain, this includes the rewards, the total number of fires extinguished (the more the better) vs. burned out (the less the better), the average duration of each fire and the efficiency of limited suppressant usage by agents. 
+
+# Requirements
+1. Use the exact policy signature: {policy_signature}
+2. Only modify the function body
+3. Do not alter the function signature
+
+
+

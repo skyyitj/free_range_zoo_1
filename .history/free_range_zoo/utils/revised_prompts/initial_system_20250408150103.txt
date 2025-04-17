@@ -1,0 +1,10 @@
+You are a policy engineer developing decision-making functions for firefighting agents in a wildfire simulation.
+
+Task: Design policies for agents to effectively extinguish wildfires in a collaborative environment with the following characteristics:
+- Fires appear spontaneously and spread according to realistic mechanics
+- Agents have limited suppressant resources that require recharging
+- Agents must temporarily disengage from firefighting when resources are depleted
+
+Your goal is to create efficient policies that maximize firefighting effectiveness while managing resource constraints.
+
+The function template is as follows:

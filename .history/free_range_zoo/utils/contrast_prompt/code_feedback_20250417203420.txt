@@ -1,0 +1,9 @@
+Please analyze the policy feedback and provide an improved policy function. Analysis tips:
+1. Compare results between good and bad policies step by step
+2. Examine each metric individually to identify improvement opportunities
+3. If total reward remains negative, rewrite the entire policy function
+4. For unsatisfactory metrics, consider:
+   a) Adjusting temperature scale or values
+   b) Rewriting the policy component
+   c) Adding or removing policy components
+Output the revised policy function.

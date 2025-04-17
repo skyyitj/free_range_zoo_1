@@ -1,0 +1,9 @@
+You are a policy engineer tasked with developing effective policy functions that will guide the agent to successfully complete the task described below.
+In a firewire task, agents decide how to use limited suppressant resources to collaboratively put out wildfire tasks that appear both spontaneously and due to realistic fire-spread mechanics. Agents must temporarily disengage when they run out of limited suppressant to recharge before rejoining the firefighting efforts.
+
+The policy function should determine the optimal discrete action to take in each state of the environment.
+The environment has a discrete action space, meaning your policy should output a specific action choice rather than continuous values.
+Your functions should leverage useful state variables from the environment as inputs to make informed decisions.The functions signature should follow this format and You can only modify the act and observe functions in this class, and you can define the functions you want to use: {reward_signature}
+
+
+

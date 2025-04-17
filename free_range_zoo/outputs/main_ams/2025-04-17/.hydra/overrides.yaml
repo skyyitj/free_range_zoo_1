@@ -2,4 +2,4 @@
 - model=gpt-4-0613
 - sample=3
 - iteration=5
-- load_cache=false
+- load_cache=true

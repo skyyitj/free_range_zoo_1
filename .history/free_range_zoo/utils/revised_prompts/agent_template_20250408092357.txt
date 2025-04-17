@@ -1,0 +1,6 @@
+class WildfireAgent(Agent):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
+        return self.actions

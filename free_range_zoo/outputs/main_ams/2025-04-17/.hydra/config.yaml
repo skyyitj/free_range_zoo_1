@@ -6,7 +6,7 @@ sample: 3
 max_iterations: 3000
 num_eval: 5
 capture_video: false
-load_cache: false
+load_cache: true
 use_wandb: false
 wandb_username: ''
 wandb_project: ''

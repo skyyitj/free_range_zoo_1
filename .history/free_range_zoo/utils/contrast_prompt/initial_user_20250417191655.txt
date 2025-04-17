@@ -1,0 +1,29 @@
+"""
+Multi-Agent Wildfire Suppression Task
+
+Objective:
+Multiple agents collaborate to extinguish wildfires in a grid environment.
+
+Task Rules:
+1. Assignment Constraints:
+   - Each agent can only be assigned to one fire location per decision step
+   - Agents can be assigned to any fire location regardless of distance
+
+2. Fire Dynamics:
+   - Fire intensity decreases based on agent's suppressant use
+   - Remaining fire = Current intensity - (Agent's suppressant × Reduction power)
+   - If fire intensity remains positive, it spread to neighboring grid cells with a given probability
+   - If fire level exceeds threshold {threshold}, it self-extinguishes but penalizes agents
+
+3. Resource Management:
+   - Agents have limited suppressant resources
+   - Suppressant is consumed when fighting fires
+   - Strategic resource allocation is crucial
+
+
+Key Considerations:
+- Balance between immediate fire control and resource conservation
+- Prevent fire spread by prioritizing critical locations
+- Avoid letting fires reach self-extinguishing levels
+- Use reward weights to guide task prioritization
+"""

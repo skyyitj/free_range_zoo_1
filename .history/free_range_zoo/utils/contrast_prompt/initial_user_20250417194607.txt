@@ -1,0 +1,20 @@
+"""
+Multi-Agent Wildfire Suppression Task
+
+Objective:
+Multiple agents collaborate to extinguish wildfires in a grid environment.
+
+# Objective
+Create a policy function that optimally assigns firefighting tasks to each agent according to the following evaluations. In the Wildfire Suppression domain, this includes the rewards, the total number of fires extinguished (the more the better) vs. burned out (the less the better), the average duration of each fire and the efficiency of limited suppressant usage by agents. 
+
+# Requirements
+1. Use the exact policy signature: {policy_signature}
+2. Only modify the function body
+3. Do not alter the function signature
+
+# Key Considerations:
+- Balance between immediate fire control and resource conservation
+- Prevent fire spread by prioritizing critical locations
+- Avoid letting fires reach self-extinguishing levels
+- Use reward weights to guide task prioritization
+
