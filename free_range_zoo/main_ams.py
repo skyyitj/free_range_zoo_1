@@ -28,7 +28,6 @@ openai.api_base = "https://api.lqqq.ltd/v1"
 openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 
 
-
 def extract_code_from_response(response: str) -> str:
     """从LLM响应中提取第一个python代码块"""
     # print("==========response=============")
@@ -37,7 +36,7 @@ def extract_code_from_response(response: str) -> str:
     code_patterns = [
         r'```python(.*?)```',  # 匹配python代码块
         r'```(.*?)```',  # 匹配无语言标注的代码块
-        r'python(.*?)', # 匹配标准python代码
+        r'python(.*?)',  # 匹配标准python代码
         r'^def\s+.*?(?=\Z)'  # 匹配以def开头直到结尾的代码
     ]
 
@@ -67,7 +66,7 @@ def main(cfg):
     env_parent = 'wildfire'
     chunk_size = cfg.sample if "gpt-3.5" in model else 4
     # prompt_dir = f'{FRZ_ROOT}/utils/prompts'
-    prompt_dir = f'{FRZ_ROOT}/utils/revised_prompts'
+    prompt_dir = f'{FRZ_ROOT}/utils/contrast_prompt'
     task_obs_file = f'{FRZ_ROOT}/envs/{env_parent}/env/{env_name}_obs.py'
     task_obs_code_string = file_to_string(task_obs_file)
     initial_system = file_to_string(f'{prompt_dir}/initial_system.txt')
@@ -76,6 +75,8 @@ def main(cfg):
     initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
     policy_signature = file_to_string(f'{prompt_dir}/policy_signature.txt')
     policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
+    best_policy = file_to_string(f'{prompt_dir}/best_policy.txt')
+    worst_policy = file_to_string(f'{prompt_dir}/worst_policy.txt')
     execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
     metric_description = file_to_string(f'{prompt_dir}/metric_description.txt')
     initial_system = initial_system.format(policy_signature=policy_signature) + code_output_tip
@@ -84,7 +85,7 @@ def main(cfg):
     #                                    task_description=task_description,
     #                                    metric_description=metric_description
     #                                    )
-    
+
     # messages = [{"role": "system", "content": initial_system}, {"role": "user", "content": initial_user}]
     # messages = [{"role": "system", "content": initial_system}]
 
@@ -107,11 +108,12 @@ def main(cfg):
     messages = global_messages.copy()
     with open(f"best_sample_idx.txt", "w") as f:
         f.write(f"best_sample_idx\n")
-
+    with open(f"worst_sample_idx.txt", "w") as f:
+        f.write(f"worst_sample_idx\n")
     for iter in range(cfg.iteration):
         num1 = 0
         num_success = 0
-        
+
         responses = []
         total_samples = 0
 
@@ -136,7 +138,7 @@ def main(cfg):
                             n=chunk_size
                         )
                     cache[kwargs] = response_cur
-                    total_samples += chunk_size                
+                    total_samples += chunk_size
                     break
                 except Exception as e:
                     if attempt >= cfg.attempt_times:
@@ -144,7 +146,7 @@ def main(cfg):
                         # print("Current Chunk Size", chunk_size)
                     logging.info(f"Attempt {attempt + 1} failed with error: {e}")
                     time.sleep(1)
-                    
+
             responses.extend(response_cur["choices"])
 
         agent_files = []
@@ -158,7 +160,7 @@ def main(cfg):
             function_filename = f"agent_iter{iter}_response{response_id}.py"
             with open(function_filename, 'w') as f:
                 f.write(functions_code)
-            
+
             if not os.path.exists("original_response"):
                 os.makedirs("original_response")
 
@@ -201,6 +203,7 @@ def main(cfg):
         # 后续结果分析与进化选择逻辑
 
         best_agent_code = ""
+        worst_agent_code = ""
 
         # best_score, best_agent = -float('inf'), None
 
@@ -219,7 +222,7 @@ def main(cfg):
             if traceback_msg == '':
                 num_success = num_success + 1
                 # 替换tensorboard相关代码
-                content += policy_feedback.format(metric_description=metric_description)
+                # content += policy_feedback.format(metric_description=metric_description)
 
                 # 读取rl_filepath中的内容
                 with open(rl_filepath, 'r') as f:
@@ -231,7 +234,7 @@ def main(cfg):
                         reward_str = line.split("Average Rewards:")[-1].strip()
                         reward = float(reward_str)
                         final_rewards = reward
-                
+
                 with open(rl_filepath, 'r') as file:
                     lines = file.readlines()
                 # 标记是否开始记录内容
@@ -251,7 +254,7 @@ def main(cfg):
                     if "training process finished!" in line:
                         break
 
-                content += code_feedback 
+                content += code_feedback
             else:
                 final_rewards = -float('inf')
                 content += execution_error_feedback.format(traceback_msg=traceback_msg)
@@ -259,10 +262,18 @@ def main(cfg):
             all_contents.append(content)
 
         best_sample_idx = np.argmax(np.array(all_rewards))
+        worst_sample_idx = np.argmin(np.array(all_rewards))
         with open(f"best_sample_idx.txt", "a") as f:
             f.write(f"best_sample_idx: {best_sample_idx}\n")
-        best_content = all_contents[best_sample_idx]
+        txt1 = best_policy.format(metric_description=metric_description)
+        best_content = txt1 + all_contents[best_sample_idx]
         best_agent_code = responses[best_sample_idx]["message"]["content"]
+
+        with open(f"worst_sample_idx.txt", "a") as f:
+            f.write(f"worst_sample_idx: {worst_sample_idx}\n")
+        txt2 = worst_policy
+        worst_content = txt2 + all_contents[worst_sample_idx]
+        worst_agent_code = responses[worst_sample_idx]["message"]["content"]
         # contents += content
         # contents += f"The success rate for this iteration is {num_success}/{num1}\n"
 
@@ -289,8 +300,13 @@ def main(cfg):
         #     messages.append({"role": "user", "content": content})
         # print("messages:", messages)
         # iteration_messages = prepare_iteration_messages(best_agent_code, feedback, contents)
-        iteration_messages = [{"role": "assistant", "content": best_agent_code}, {"role": "user", "content": best_content}]
-        messages = global_messages + iteration_messages
+        iteration_messages1 = [{"role": "assistant", "content": best_agent_code},
+                               {"role": "user", "content": best_content}]
+
+        iteration_messages2 = [{"role": "assistant", "content": worst_agent_code},
+                               {"role": "user", "content": worst_content}]
+        messages = global_messages + iteration_messages1 + iteration_messages2
+        #print("messages:", messages)
 
 
 if __name__ == "__main__":

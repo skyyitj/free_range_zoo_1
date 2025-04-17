@@ -1,0 +1,61 @@
+Given the feedback indicating extremely poor performance with the worst policy, I'll redesign the policy function with the following goals:
+
+1. **Prioritize fires based on their intensity and closeness:** Since the average putout number is 0, it means agents might not be effectively targeting fires. Focusing on the nearest and most intense fires could improve performance.
+2. **Introduce efficiency in suppressant use:** Given that the average used suppressant is 0, it implies either the agents don't use their suppressants at all or the metric is not accurately captured due to issues in the task completion process. Ensuring agents use their resources wisely is critical.
+3. **Improve rewards:** The negative reward indicates agents are making decisions that lead to penalization rather than rewarded outcomes. By prioritizing critical fires and ensuring effective resource use, we aim to improve the reward score.
+
+With these considerations, here's a redesigned single agent policy function:
+
+```python
+from typing import Tuple, List
+import numpy as np
+
+def single_agent_policy(
+    # Agent Properties
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # Team Information
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # Fire Task Information
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],              
+
+    # Task Prioritization
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    Optimal fire-fighting task selection for a single agent considering fire intensity, distance, and agent capabilities.
+    """
+
+    # Initialize variables
+    best_score = -np.inf  
+    best_task = -1 
+
+    if agent_suppressant_num <= 0:
+        return best_task  # Agent has no suppressants.
+
+    for task_idx in range(len(fire_pos)):
+        # Calculate the Euclidean distance to the fire
+        distance = np.linalg.norm(np.array(agent_pos) - np.array(fire_pos[task_idx]))
+        
+        # Consider if the agent can make a significant impact on the fire
+        effectiveness = agent_fire_reduction_power / (1 + fire_intensities[task_idx])
+        
+        # Create a score blend of priority, distance, and potential effectiveness
+        score = (fire_putout_weight[task_idx] * effectiveness) / (1 + distance)  
+        
+        # Update best task if new score is higher
+        if score > best_score:
+            best_score = score
+            best_task = task_idx
+
+    return best_task
+```
+
+This function makes an agent evaluate tasks based on a blend of factors: the priority of the fire, the agent's distance to it, and how effectively the agent believes it can fight the fire given its capabilities and the fire's intensity. 
+
+The scoring method now ensures that tasks with higher priority weights are preferred, but it also factors in the real possibility of making a significant impact (considering suppressant capacity and fire intensity) and the logistical aspect of distance, aiming to make agents more efficiently targeted fires they have a good chance of helping to control or extinguish.

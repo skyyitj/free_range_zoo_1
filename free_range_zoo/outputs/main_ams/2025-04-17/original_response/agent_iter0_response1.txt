@@ -1,0 +1,54 @@
+To address this complex scenario involving multiple agents, fires with varying intensities, and a strategic approach to firefighting, we'll develop a policy function for single-agent decision-making. This function will evaluate the conditions of different fire tasks and prioritize them based on a series of factors including the fire's intensity, the agent's capability and location relative to the fire, and a weighting system that underlines the importance of certain fires over others. 
+
+Given the multiple variables at play, the selection of which fire to tackle will be calculated based on a scoring system that considers both the necessity of suppressing each fire and the practicality of doing so (i.e., distance to the fire and fire intensity). Each fire task will be assigned a score based on these criteria, and the task with the highest score will be selected.
+
+Let's develop this policy function:
+
+```python
+from typing import Tuple, List
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+
+    scores = []
+    distance_temperature = 1.0  # Controls sensitivity to distance
+    intensity_temperature = 0.5  # Controls sensitivity to fire intensity
+    level_temperature = 1.0  # Controls sensitivity to fire level
+    
+    for index, (fire_position, fire_intensity, fire_level, weight) in enumerate(zip(fire_pos, fire_intensities, fire_levels, fire_putout_weight)):
+        # Calculate Euclidean distance between the agent and the fire task
+        distance = np.sqrt((agent_pos[0] - fire_position[0]) ** 2 + (agent_pos[1] - fire_position[1]) ** 2)
+        # Normalize and scale distance
+        distance_score = np.exp(-distance / distance_temperature)
+        
+        # Consider fire intensity
+        intensity_score = np.exp(-fire_intensity / intensity_temperature)
+        
+        # Consider fire level
+        level_score = np.exp(-fire_level / level_temperature)
+        
+        # Composite score calculation
+        score = weight * distance_score * intensity_score * level_score
+        scores.append(score)
+
+    # Select the fire task with the highest score
+    selected_task_index = np.argmax(scores)
+    return selected_task_index
+```
+
+In this policy function, we've integrated several considerations:
+- The distance between the agent and the fire, which is crucial as agents likely cannot instantly traverse the landscape.
+- The intensity of the fire, as more intense fires require more resources and effort to suppress.
+- The level of the fire, with the assumption that fires of higher levels might be more dangerous and therefore might decompose resources quicker.
+- The pre-assigned weight of each fire's suppression task, allowing for strategic prioritizations according to task importance.
+
+Each of these components is synthesized into a unified score for each task, enabling a balanced and informed task selection process.

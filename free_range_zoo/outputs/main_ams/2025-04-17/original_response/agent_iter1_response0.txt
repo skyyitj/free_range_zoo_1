@@ -1,0 +1,48 @@
+Given the results of the worst policy, let's carefully consider which parts of the policy could be improved. Looking at the average metrics, there are some areas where performance can be enhanced, such as increasing the average rewards, improving suppressant efficiency, and more effectively reducing the number of fires (both burning and burned out). Here is an improvement on the initial policy function with focus on minimizing the burning number and maximizing putout number, while enhancing suppressant efficiency.
+
+```python
+from typing import Tuple, List
+import numpy as np
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]],
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    
+    scores = []
+    for task_index in range(len(fire_pos)):
+        # Calculate distance 
+        distance = np.sqrt((fire_pos[task_index][0] - agent_pos[0])**2 + (fire_pos[task_index][1] - agent_pos[1])**2)
+        
+        # Expected contribution of the agent towards putting out the fire
+        expected_contribution = agent_fire_reduction_power / (fire_intensities[task_index] + 1)
+        
+        # Calculate effective weight considering the urgency and importance of the fire
+        effective_weight = fire_putout_weight[task_index] * (1 + 1 / (fire_levels[task_index] + 1))
+
+        # Calculate a score considering distance, expected contribution, and fire level importance
+        score = (expected_contribution + effective_weight) / (distance + 1)
+        scores.append(score)
+    
+    # Choose the fire task with the highest score
+    best_task_index = np.argmax(scores)
+    return best_task_index
+```
+
+This updated policy function takes into account the distance to each fire, the agent's potential to reduce the fire based on its suppressant power, and the importance of each fire as indicated by the fire level and fire putout weights. By better balancing distance with task urgency (considering fire level and weight), the agent has a superior chance at addressing the most impactful fires first, therefore potentially improving overall performance metrics. This approach aims to more effectively utilize suppressant resources by ensuring agents target fires where they can have the greatest impact, thus aiming to increase suppressant efficiency and decrease the total number of fires unattended, burnt out, or requiring significant steps to extinguish.

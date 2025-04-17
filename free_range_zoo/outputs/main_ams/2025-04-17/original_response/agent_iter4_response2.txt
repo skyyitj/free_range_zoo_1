@@ -1,0 +1,54 @@
+Given the severity of the situation described by the worst policy's results, where no fires are being put out and the average rewards are significantly negative, it's clear that a comprehensive rewrite of the policy function is needed. The goal will be to adjust the policy in a way that improves the "Average Putout Number," decreases the "Average Burning Number" and "Average Burnedout Number," and makes better use of the agents' suppressant resources to increase the "Average Rewards" and efficiency. 
+
+Incorporating a more detailed decision process that takes into account the distance to the fire, the intensity (and potential for spreading), the agent's resources, and the reward weights, would likely improve performance:
+
+```python
+from typing import List, Tuple
+import numpy as np
+
+def single_agent_policy(
+    # Agent Properties
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # Team Information
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # Fire Task Information
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],              
+
+    # Task Prioritization
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    This function selects the optimal fire-fighting task for a single agent.
+    """
+
+    # Initialize the score and task index
+    best_score = -np.inf  # Beginning with minus infinity to ensure any score is better
+    best_task_index = -1
+
+    # Iterate through all available fire tasks
+    for i, (f_pos, f_level, f_intensity) in enumerate(zip(fire_pos, fire_levels, fire_intensities)):
+        # Calculate euclidean distance from agent to fire
+        distance = np.linalg.norm(np.array(agent_pos) - np.array(f_pos))
+
+        # Calculate the potential efficiency of suppressing this fire, considering agent's resources and fire's intensity
+        suppression_potential = min(agent_suppressant_num * agent_fire_reduction_power, f_intensity)
+        efficiency = suppression_potential / (1 + distance)  # Adjusted with distance to favor closer fires
+
+        # Incorporate fire putout weight to give priority to more valuable tasks
+        score = efficiency * fire_putout_weight[i]
+
+        # Update the best task and score, if current score is better
+        if score > best_score:
+            best_score = score
+            best_task_index = i
+
+    return best_task_index
+```
+
+In this improved policy, the decision-making process revolves more around the efficiency and potential impact of the agent's actions, considering the relevance of each task based on reward weights, the agent's capabilities, and distances to fires. By comparing the efficiency scores and weighting them by the assigned task value, this policy aims to improve reward gains, reduce the overall steps required by better task selection, and improve the use of suppressant resources through strategic allocation. This policy should lead to better suppression of fires before they spread or intensify, increasing the Average Putout Number and enhancing the Average Rewards.

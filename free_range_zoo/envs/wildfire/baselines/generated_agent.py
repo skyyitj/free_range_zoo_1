@@ -9,7 +9,6 @@ import numpy as np
 from typing import List, Tuple
 from scipy.spatial import distance
 
-
 class GenerateAgent(Agent):
     """Agent that always fights the strongest available fire."""
 
@@ -102,10 +101,8 @@ class GenerateAgent(Agent):
                     print(f"Warning: Fire point {i} out of bounds: x={fire_x}, y={fire_y}")
             assert len(fire_rewards_weights) == len(fire_pos_new) == len(fire_levels_new) == len(fire_intensities_new)
             if len(fire_rewards_weights) > 0:
-                maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num,
-                                                    other_agents_pos,
-                                                    fire_pos_new, fire_levels_new, fire_intensities_new,
-                                                    fire_rewards_weights)
+                maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
+                                                    fire_pos_new, fire_levels_new, fire_intensities_new, fire_rewards_weights)
             else:
                 maximum_index = -1
             # print(f"maximum_index: {maximum_index}")
@@ -143,78 +140,54 @@ class GenerateAgent(Agent):
         for batch in range(self.parallel_envs):
             for element in range(self.fires[batch].size(0)):
                 self.argmax_store[batch][element] = self.fires[batch][element]
+                
+
 import numpy as np
 from typing import List, Tuple
 from scipy.spatial import distance
 
-
 def single_agent_policy(
-        # === Agent Properties ===
-        agent_pos: Tuple[float, float],  # 当前智能体的位置 (y, x)
-        agent_fire_reduction_power: float,  # 扑火能力
-        agent_suppressant_num: float,  # 抑制剂数量
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Position of the agent (y, x)
+    agent_fire_reduction_power: float,           # Fire suppression power
+    agent_suppressant_num: float,                # Fire suppressant resources
 
-        # === Team Information ===
-        other_agents_pos: List[Tuple[float, float]],  # 其他智能体的位置
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
 
-        # === Fire Task Information ===
-        fire_pos: List[Tuple[float, float]],  # 各火点的位置
-        fire_levels: List[int],  # 各火点的火级（可认为是火点难度或需要消耗的抑制剂量的近似指标）
-        fire_intensities: List[float],  # 各火点的火焰强度（紧迫性指标）
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Positions of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value for each fire
 
-        # === Task Prioritization ===
-        fire_putout_weight: List[float],  # 各火点对应的扑灭优先级权重
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for suppression tasks
 ) -> int:
-    """
-    综合考虑距离、资源匹配、火势紧迫性以及协同惩罚，计算每个火点的得分，选择得分最高的目标进行扑灭。
 
-    改进思路：
-      1. 以 1/(1+distance) 作为距离得分，使得离agent近的火点加分。
-      2. 用 tanh 映射 (agent能力 - 火焰强度) 的差值，衡量资源匹配效果，将结果平移到 [0,2] 区间。
-      3. 火势紧迫性使用 fire_intensity * fire_putout_weight。
-      4. 如果其他agent中有更接近该火点的，则用一个惩罚系数降低该火点的总体得分。
-      5. 通过线性加权综合各项得分，再乘以 sqrt(抑制剂数量) 来调节。
-    """
     num_tasks = len(fire_levels)
     scores = np.zeros(num_tasks)
 
-    # 当前agent能扑灭的总火势（资源总量）
     can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
 
-    # 权重参数（可根据实验效果调整）
-    w_distance = 1.0
-    w_resource = 1.0
-    w_urgency = 1.0
-    conflict_exp = 0.7  # 协同惩罚指数
+    # Temperatures
+    level_temperature = 0.35
+    intensity_temperature = 0.15
+    distance_temperature = 0.20 # Increasing temperature to prioritize closer fires
 
-    for i in range(num_tasks):
-        # 计算当前agent与该火点的欧式距离
-        d = distance.euclidean(agent_pos, fire_pos[i])
-        # 距离得分，距离越小得分越高
-        distance_score = 1.0 / (1.0 + d)
+    for task in range(num_tasks):
 
-        # 资源匹配因子：agent的扑火能力与火点火焰强度之间的差值，用 tanh 映射到 (-1, 1)，再平移到 (0, 2) 范围
-        resource_factor = np.tanh((can_put_out_fire - fire_intensities[i]) / (can_put_out_fire + 1e-6))
-        resource_factor = (resource_factor + 1.0) / 2.0
+        # Calculate Euclidean distance between fire and agent
+        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
 
-        # 火势紧迫性：火焰强度乘上火点的优先级权重
-        urgency = fire_intensities[i] * fire_putout_weight[i]
+        # Adjusting the calculation of fire level weight.
+        # Previously, it seemed that the agent was too averse to high level fires.
+        # Now, the agent should be more willing to attack such fires.
+        scores[task] = (
+            np.exp(-(fire_levels[task] / can_put_out_fire) * level_temperature) +
+            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
+            fire_distance * np.exp(fire_distance * distance_temperature)
+        ) * fire_putout_weight[task] * np.sqrt(agent_suppressant_num)
 
-        # 线性组合各项得分
-        base_score = w_urgency * urgency * resource_factor + w_distance * distance_score
-
-        # 协同惩罚：如果其他agent中有更靠近该火点的，则降低该火点得分
-        penalty = 1.0
-        if other_agents_pos:
-            min_other_distance = min(distance.euclidean(other_pos, fire_pos[i]) for other_pos in other_agents_pos)
-            if min_other_distance < d:
-                # 惩罚因子，确保当其他agent更近时取值小于1
-                penalty = (min_other_distance / (d + 1e-6)) ** conflict_exp
-
-        # 综合得分，再乘上 sqrt(抑制剂数量) 作调节
-        scores[i] = base_score * penalty * np.sqrt(agent_suppressant_num)
-
-    # 返回得分最高的火点索引
-    max_score_task = int(np.argmax(scores))
+    # Return task index with maximum score
+    max_score_task = np.argmax(scores)
     return max_score_task
-

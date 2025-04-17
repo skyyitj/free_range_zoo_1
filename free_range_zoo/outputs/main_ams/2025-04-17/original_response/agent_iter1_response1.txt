@@ -1,0 +1,59 @@
+Given the context and based on the feedback from the worst policy performance, it appears that a key issue is the balance between the choice of fires to suppress versus the resources used and the efficiency of those resources. The scenario provided seems to suggest that more emphasis might be needed on efficiently allocating resources (suppressant) towards the fires that pose the greatest risk and offer the highest reward, while also considering the agent's ability to impact the fire (considering distance and fire intensity). Here's a revised approach that seeks to address these considerations:
+
+```python
+from typing import Tuple, List
+import numpy as np
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]],
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+
+    # Calculate effective distance that combines physical distance and effort needed
+    distances = [
+        np.sqrt((fpos[0] - agent_pos[0])**2 + (fpos[1] - agent_pos[1])**2) + fire_intensities[i] * 0.1
+        for i, fpos in enumerate(fire_pos)
+    ]
+
+    # Evaluate how much each agent can reduce the fire taking into account their resources
+    effectiveness_scores = [
+        (agent_fire_reduction_power * agent_suppressant_num) / (fire_levels[i] + 1)
+        for i in range(len(fire_levels))
+    ]
+
+    # Prioritize tasks based on a weight system that emphasizes on the rewards and effectiveness
+    task_priority_scores = [
+        fire_putout_weight[i] * effectiveness_scores[i] / (1 + distances[i])
+        for i in range(len(distances))
+    ]
+
+    # Choose the task with the highest score
+    best_task_index = np.argmax(task_priority_scores)
+    return best_task_index
+```
+
+The revised policy function introduces a more nuanced approach to task selection by factoring in:
+
+- **Effective Distance**: This now accounts for both the physical distance to each fire and an additional component related to the fire's intensity, aiming to favor closer fires but also those where the agent's efforts might be more impactful.
+
+- **Effectiveness Score**: This measures potential effectiveness in reducing a fire by considering both the agent's suppressant capability and the inherent difficulty of extinguishing the fire due to its level.
+
+- **Task Priority Score**: This merges the concept of reward-driven selection (put-out weight), the agent's effectiveness in combating each fire, and the effective distance to calculate a comprehensive score for each task.
+
+The adjustments seek to ensure that agents optimally allocate their efforts towards fires they are best equipped to handle efficiently, taking into consideration distance, intensity, and potential reward.
