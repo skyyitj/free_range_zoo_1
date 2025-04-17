@@ -1,0 +1,4 @@
+task: UGVUAV
+env_name: uav
+description: Optimize a fleet of UAVs to maximize data collection while minimizing energy consumption.
+max_iterations: 800

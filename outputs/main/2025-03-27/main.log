@@ -1,0 +1,1121 @@
+[2025-03-27 22:21:11,570][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:21:11,570][root][INFO] - Task: wildfire
+[2025-03-27 22:21:11,570][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-03-27 22:21:11,571][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-27 22:21:11,571][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 22:21:11,571][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is @dataclass
+class WildfireObservation:
+    """野火环境观察表示
+
+    属性:
+        fires: 野火存在矩阵 <y, x>，0表示无火，1表示有火
+        intensity: 野火强度矩阵 <y, x>，范围[0,1]
+        fuel: 燃料剩余矩阵 <y, x>，范围[0,100]
+        agents: 智能体位置矩阵 <agent, 2>，每个元素为(y, x)坐标
+        suppressants: 智能体灭火剂矩阵 <agent, 1>，范围[0,100]
+        capacity: 智能体最大灭火剂矩阵 <agent, 1>，范围[0,100]
+        equipment: 智能体设备状态矩阵 <agent, 1>，范围[0,1]
+        attack_counts: 每个格子的灭火剂使用次数 <y, x>，范围[0,100]
+    """
+    fires: np.ndarray
+    intensity: np.ndarray
+    fuel: np.ndarray
+    agents: np.ndarray
+    suppressants: np.ndarray
+    capacity: np.ndarray
+    equipment: np.ndarray
+    attack_counts: np.ndarray
+
+    def to_dict(self) -> Dict[str, np.ndarray]:
+        """将观察转换为字典格式"""
+        return {
+            'fires': self.fires,
+            'intensity': self.intensity,
+            'fuel': self.fuel,
+            'agents': self.agents,
+            'suppressants': self.suppressants,
+            'capacity': self.capacity,
+            'equipment': self.equipment,
+            'attack_counts': self.attack_counts
+        }
+
+
+def build_observation_space(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> spaces.Dict:
+    """构建观察空间
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        gymnasium观察空间字典
+    """
+    obs_dict = {
+        'fires': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'intensity': spaces.Box(low=0, high=1, shape=grid_size, dtype=np.float32),
+        'fuel': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32),
+        'agents': spaces.Box(low=0, high=max(grid_size), shape=(num_agents, 2), dtype=np.float32),
+        'attack_counts': spaces.Box(low=0, high=100, shape=grid_size, dtype=np.float32)
+    }
+
+    if include_power:
+        obs_dict.update({
+            'power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32),
+            'max_power': spaces.Box(low=0, high=1, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    if include_suppressant:
+        obs_dict.update({
+            'suppressants': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32),
+            'capacity': spaces.Box(low=0, high=100, shape=(num_agents, 1), dtype=np.float32)
+        })
+
+    return spaces.Dict(obs_dict)
+
+
+def get_observation_space_size(
+        grid_size: Tuple[int, int],
+        num_agents: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> int:
+    """获取观察空间大小
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        观察空间的总维度
+    """
+    base_size = grid_size[0] * grid_size[1] * 4  # fires, intensity, fuel, attack_counts
+    agent_size = num_agents * 2  # agents position
+
+    if include_power:
+        agent_size += num_agents * 2  # power and max_power
+
+    if include_suppressant:
+        agent_size += num_agents * 2  # suppressants and capacity
+
+    return base_size + agent_size
+
+
+def compute_observations(
+        state: WildfireObservation,
+        agent_id: int,
+        include_power: bool = True,
+        include_suppressant: bool = True
+) -> Dict[str, np.ndarray]:
+    """计算智能体的观察
+
+    参数:
+        state: 环境状态
+        agent_id: 智能体ID
+        include_power: 是否包含能量系统
+        include_suppressant: 是否包含灭火剂系统
+
+    返回:
+        智能体的观察字典
+    """
+    obs = {
+        'fires': state.fires,
+        'intensity': state.intensity,
+        'fuel': state.fuel,
+        'agents': state.agents,
+        'attack_counts': state.attack_counts
+    }
+
+    if include_power:
+        obs.update({
+            'power': state.power,
+            'max_power': state.max_power
+        })
+
+    if include_suppressant:
+        obs.update({
+            'suppressants': state.suppressants,
+            'capacity': state.capacity
+        })
+
+    return obs
+
+
+def normalize_observation(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
+    """标准化观察值到[0,1]范围
+
+    参数:
+        obs: 原始观察字典
+
+    返回:
+        标准化后的观察字典
+    """
+    normalized = {}
+
+    for key, value in obs.items():
+        if key in ['fires', 'intensity', 'power', 'max_power', 'equipment']:
+            normalized[key] = value  # 已经在[0,1]范围内
+        elif key in ['fuel', 'suppressants', 'capacity', 'attack_counts']:
+            normalized[key] = value / 100.0  # 归一化到[0,1]
+        elif key == 'agents':
+            normalized[key] = value / max(value.shape)  # 归一化坐标
+        else:
+            normalized[key] = value
+
+    return normalized
+
+
+def create_empty_observation(grid_size: Tuple[int, int], num_agents: int) -> WildfireObservation:
+    """创建空的观察对象
+
+    参数:
+        grid_size: 网格大小 (height, width)
+        num_agents: 智能体数量
+
+    返回:
+        初始化的空观察对象
+    """
+    return WildfireObservation(
+        fires=np.zeros(grid_size, dtype=np.float32),
+        intensity=np.zeros(grid_size, dtype=np.float32),
+        fuel=np.full(grid_size, 100.0, dtype=np.float32),
+        agents=np.zeros((num_agents, 2), dtype=np.float32),
+        suppressants=np.zeros((num_agents, 1), dtype=np.float32),
+        capacity=np.zeros((num_agents, 1), dtype=np.float32),
+        equipment=np.ones((num_agents, 1), dtype=np.float32),
+        attack_counts=np.zeros(grid_size, dtype=np.float32)
+    )
+
+
+class Env:
+    def compute_observations(self, agent_id):
+        agent = self.agent_list[agent_id]
+
+        # 获取自身观察
+        self_obs = self._get_self_observation(agent)
+
+        # 获取其他智能体观察
+        others_obs = self._get_others_observation(agent_id)
+
+        # 获取野火任务观察
+        tasks_obs = self._get_tasks_observation()
+
+        # 组合所有观察
+        observation = {
+            'self': self_obs,
+            'others': others_obs,
+            'tasks': tasks_obs
+        }
+
+        return observation
+
+    def _get_self_observation(self, agent):
+        """获取自身观察"""
+        # 位置坐标
+        pos = agent.final_pos
+
+        # 根据配置决定是否包含能量和灭火剂
+        obs = [pos[0], pos[1]]  # 基础位置信息
+
+        if self.include_power:
+            obs.append(agent.power / self.max_power)  # 能量水平
+
+        if self.include_suppressant:
+            obs.append(agent.suppressant / self.max_suppressant)  # 灭火剂水平
+
+        return np.array(obs, dtype=np.float32)
+
+    def _get_others_observation(self, agent_id):
+        """获取其他智能体的观察"""
+        others_obs = []
+        for other_id in range(self.agent_n):
+            if other_id == agent_id:
+                continue
+            other_agent = self.agent_list[other_id]
+            other_obs = self._get_self_observation(other_agent)
+            others_obs.append(other_obs)
+        return tuple(others_obs)
+
+    def _get_tasks_observation(self):
+        """获取野火任务观察"""
+        tasks_obs = []
+        for fire_id in range(self.num_tasks):
+            fire = self.fire_list[fire_id]
+            # 野火观察包含：位置(y,x)、等级、强度
+            fire_obs = [
+                fire.position[0],  # y坐标
+                fire.position[1],  # x坐标
+                fire.level,  # 野火等级
+                fire.intensity  # 野火强度
+            ]
+            tasks_obs.append(np.array(fire_obs, dtype=np.float32))
+        return tuple(tasks_obs)
+
+    def pos2grid_xy(self, pos, global_horizon):
+        """将坐标转换为网格坐标"""
+        grid_x = int(pos[0] / self.coordx_max * global_horizon)
+        grid_y = int(pos[1] / self.coordy_max * global_horizon)
+        grid_xy = (grid_x, grid_y)
+        return grid_xy
+. Write a reward function for the following task: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage..
+
+[2025-03-27 22:21:40,756][root][INFO] - Iteration 0: GPT Output:
+ ```python
+def compute_reward(state: WildfireObservation) -> Tuple[np.array, Dict[str, np.array]]:
+    """
+    The reward function calculates a reward based on the following:
+    - Reducing the total fire intensity and spread (decrease in total fires and fire intensity)
+    - Resource management (effective use of suppressants)
+    - Equipment status (Protection of agents' equipment)
+
+    Parameters:
+        state: an object of class `WildfireObservation` representing the state of the environment.
+
+    Returns:
+        reward: a scalar reward
+        reward_info: a dictionary that includes different components of the reward
+    """
+
+    # temperature parameters for transforming components of the reward
+    temp_fire = 1.0
+    temp_resource = 1.0
+    temp_equipment = 1.0
+
+    # calculate different components of the reward
+    # calculate change in fires and fire intensity
+    total_fires = state.fires.sum()
+    total_intensity = state.intensity.sum()
+    reward_fire = torch.exp(-temp_fire * (total_fires + total_intensity))
+
+    # calculate resource usage efficiency (use of suppressants)
+    total_suppressants = state.suppressants.sum()
+    total_capacity = state.capacity.sum()
+    reward_resource = torch.exp(-temp_resource * total_suppressants / total_capacity)
+
+    # calculate equipment status (higher if all equipment are functioning, lower if any equipment is damaged)
+    total_equipment = state.equipment.sum()
+    reward_equipment = torch.exp(temp_equipment * total_equipment / len(state.equipment))
+
+    # combine components to get final reward
+    reward = reward_fire + reward_resource + reward_equipment
+
+    reward_info = {
+        "reward_fire": reward_fire,
+        "reward_resource": reward_resource,
+        "reward_equipment": reward_equipment
+    }
+
+    # return the total reward and the dictionary of the components
+    return reward, reward_info
+
+```
+In this reward function, the agent gets a reward for reducing the total number of fires and the fire intensity. The efficiency on using suppressants also affects the reward (the less unused suppressants, the higher the reward). A higher reward is given if all agents have their equipment in a good condition. The individual rewards are calculated using the exponential function, which helps to effectively evoke the agents' interests in achieving the best results for every sub-goal. The temperature parameters can be tuned to give different priorities to the different components of the reward.
+
+[2025-03-27 22:21:40,756][root][INFO] - Iteration 0: Prompt Tokens: 2744, Completion Tokens: 2295, Total Tokens: 5039
+[2025-03-27 22:21:40,756][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-27 22:21:40,759][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-27 22:34:11,371][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:34:11,371][root][INFO] - Task: wildfire
+[2025-03-27 22:34:11,371][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 22:41:32,901][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:41:32,902][root][INFO] - Task: wildfire
+[2025-03-27 22:41:32,902][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 22:46:04,762][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:46:04,762][root][INFO] - Task: wildfire
+[2025-03-27 22:46:04,762][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 22:57:28,340][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:57:28,340][root][INFO] - Task: wildfire
+[2025-03-27 22:57:28,340][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 22:58:10,223][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:58:10,223][root][INFO] - Task: wildfire
+[2025-03-27 22:58:10,223][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 22:59:34,875][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 22:59:34,875][root][INFO] - Task: wildfire
+[2025-03-27 22:59:34,875][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:00:34,483][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:00:34,483][root][INFO] - Task: wildfire
+[2025-03-27 23:00:34,483][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:08:04,786][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:08:04,786][root][INFO] - Task: wildfire
+[2025-03-27 23:08:04,786][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:13:04,753][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:13:04,753][root][INFO] - Task: wildfire
+[2025-03-27 23:13:04,753][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:13:04,754][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:13:04,754][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:13:04,754][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:13:34,805][root][INFO] - Iteration 0: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:13:34,805][root][INFO] - Iteration 0: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:13:34,805][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-27 23:13:34,809][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-27 23:15:53,574][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:15:53,574][root][INFO] - Task: wildfire
+[2025-03-27 23:15:53,574][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:15:53,575][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-27 23:15:53,577][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-27 23:15:53,605][root][INFO] - Iteration 1: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:15:53,605][root][INFO] - Iteration 1: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:15:53,605][root][INFO] - Iteration 1: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:15:53,606][root][INFO] - Iteration 1: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:15:53,606][root][INFO] - Iteration 1: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:15:53,606][root][INFO] - Iteration 1: Processing Code Run 0
+[2025-03-27 23:15:53,609][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-03-27 23:15:53,638][root][INFO] - Iteration 2: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:15:53,638][root][INFO] - Iteration 2: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:15:53,638][root][INFO] - Iteration 2: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:15:53,639][root][INFO] - Iteration 2: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:15:53,639][root][INFO] - Iteration 2: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:15:53,639][root][INFO] - Iteration 2: Processing Code Run 0
+[2025-03-27 23:15:53,642][root][INFO] - Iteration 2: Code Run 0 successfully training!
+[2025-03-27 23:17:05,884][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:17:05,884][root][INFO] - Task: wildfire
+[2025-03-27 23:17:05,884][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:17:05,885][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-27 23:17:05,886][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-27 23:17:05,913][root][INFO] - Iteration 1: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:17:05,913][root][INFO] - Iteration 1: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:17:05,913][root][INFO] - Iteration 1: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:17:05,913][root][INFO] - Iteration 1: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:17:05,914][root][INFO] - Iteration 1: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:17:05,914][root][INFO] - Iteration 1: Processing Code Run 0
+[2025-03-27 23:17:05,917][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-03-27 23:17:05,945][root][INFO] - Iteration 2: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:17:05,945][root][INFO] - Iteration 2: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:17:05,945][root][INFO] - Iteration 2: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:17:05,946][root][INFO] - Iteration 2: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:17:05,946][root][INFO] - Iteration 2: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:17:05,946][root][INFO] - Iteration 2: Processing Code Run 0
+[2025-03-27 23:17:05,949][root][INFO] - Iteration 2: Code Run 0 successfully training!
+[2025-03-27 23:28:00,826][root][INFO] - Using LLM: gpt-4-0613
+[2025-03-27 23:28:00,826][root][INFO] - Task: wildfire
+[2025-03-27 23:28:00,827][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-03-27 23:28:00,827][root][INFO] - Iteration 0: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:28:00,827][root][INFO] - Iteration 0: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:28:00,827][root][INFO] - Iteration 0: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:28:00,827][root][INFO] - Iteration 0: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:28:00,828][root][INFO] - Iteration 0: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:28:00,828][root][INFO] - Iteration 0: Processing Code Run 0
+[2025-03-27 23:28:00,829][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-03-27 23:28:00,858][root][INFO] - Iteration 1: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:28:00,858][root][INFO] - Iteration 1: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:28:00,858][root][INFO] - Iteration 1: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:28:00,859][root][INFO] - Iteration 1: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:28:00,859][root][INFO] - Iteration 1: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:28:00,859][root][INFO] - Iteration 1: Processing Code Run 0
+[2025-03-27 23:28:00,862][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-03-27 23:28:00,890][root][INFO] - Iteration 2: Generating 1 samples with gpt-4-0613
+[2025-03-27 23:28:00,891][root][INFO] - Iteration 2: GPT System Input:
+ You are a reward engineer trying to write reward functions to solve reinforcement learning tasks as effective as possible.
+Your goal is to write a reward function for the environment that will help the agent learn the task described in text. 
+Your reward function should use useful variables from the environment as inputs. As an example,
+the reward function signature can be: def compute_reward() -> Tuple[np.array, Dict[str, np.array]]:
+    ...
+    return reward, {}
+
+The output of the reward function should consist of two items:
+    (1) the total reward,
+    (2) a dictionary of each individual reward component.
+The code output should be formatted as a python code string: "```python ... ```".
+
+Some helpful tips for writing the reward function code:
+    (1) You may find it helpful to normalize the reward to a fixed range by applying transformations like torch.exp to the overall reward or its components
+    (2) If you choose to transform a reward component, then you must also introduce a temperature parameter inside the transformation function; this parameter must be a named variable in the reward function and it must not be an input variable. Each transformed reward component should have its own temperature variable
+    (3) Make sure the type of each input variable is correctly specified; a float input variable should not be specified as torch.Tensor
+    (4) Ensure the reward values are constrained into a range to prevent overflow
+    (5) Most importantly, the reward code's input variables must contain only attributes of the provided environment class definition (namely, variables that have prefix self.). Under no circumstance can you introduce new input variables.
+
+
+[2025-03-27 23:28:00,891][root][INFO] - Iteration 2: GPT User Input:
+ The Python environment is . Write a reward function for the following task: Detailed task description for wildfire task.
+
+[2025-03-27 23:28:00,891][root][INFO] - Iteration 2: GPT Output:
+ ```python
+import numpy as np
+from typing import Dict, Tuple
+
+def compute_reward(fire: np.array, agent_pos: Tuple[int, int]) -> Tuple[float, Dict[str, float]]:
+    # Setting up reward components
+    distance_reward = 0.0
+    fire_reward = 0.0
+
+    # Temperature parameters for transformation
+    distance_temperature = 5.0
+    fire_temperature = 12.5
+
+    # Getting agent position
+    agent_x, agent_y = agent_pos
+
+    # Calculating Euclidean distance from each fire and Sum it up
+    total_distance = 0.0
+    for i in range(fire.shape[0]):
+        for j in range(fire.shape[1]):
+            # If a cell is on fire
+            if fire[i, j] == 1:
+                total_distance += np.sqrt((agent_x - i) ** 2 + (agent_y - j) ** 2)
+    
+    # Inversely proportional to the distance from the fire
+    distance_reward = 1 / total_distance if total_distance > 0 else 0
+
+    # Count of fires in the environment
+    num_fires = np.sum(fire)
+
+    # Inversely proportional to the number of fires
+    fire_reward = 1 / num_fires if num_fires > 0 else 0
+
+    # Normalize rewards with temperature parameter using exponential function
+    distance_reward = np.exp(distance_reward / distance_temperature)
+    fire_reward = np.exp(fire_reward / fire_temperature)
+
+    # Weighting the different reward components
+    final_reward = 0.7 * distance_reward + 0.3 * fire_reward
+
+    # Returning final reward and individual reward components
+    return final_reward, {'distance_reward': distance_reward, 'fire_reward': fire_reward}
+```
+In this reward function, we are encouraging the agent to go closer to the fire and decrease the amount of fire. We compute distance_reward inversely proportional to the total distance from the agent to the fire across the region, fire_reward inversely proportional to the number of fires in the environment. We process these rewards with exponential function in order to normalize them with temperature parameter, then blend them to get a 'final_reward'. Depending on the task's exact requirements, you might want to adjust the weighting between the distance and the fire components.
+
+[2025-03-27 23:28:00,891][root][INFO] - Iteration 2: Prompt Tokens: 358, Completion Tokens: 2304, Total Tokens: 2662
+[2025-03-27 23:28:00,892][root][INFO] - Iteration 2: Processing Code Run 0
+[2025-03-27 23:28:00,895][root][INFO] - Iteration 2: Code Run 0 successfully training!

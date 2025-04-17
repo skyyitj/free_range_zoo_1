@@ -1,0 +1,10 @@
+[2025-04-08 21:19:44,075] [ WARNING] [      main] [          evaluate.py:074] Output directory evaluation_results already exists and may contain artifacts from a previous run.
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:076] Running the baseline experiment on device cpu and parameters:
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - output: evaluation_results
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - config: archive/competition_configs/wildfire/WS1.pkl
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - cuda: False
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - threads: 1
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - seed: 16
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - dataset_seed: None
+[2025-04-08 21:19:44,075] [    INFO] [      main] [          evaluate.py:078] - testing_episodes: 16
+[2025-04-08 21:19:44,076] [    INFO] [      main] [          evaluate.py:085] Initializing dataset

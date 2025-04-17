@@ -1,0 +1,63 @@
+[2025-04-10 22:47:53,124][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-10 22:53:30,517][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 22:54:05,613][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-10 22:54:09,761][root][INFO] - Iteration 0: Code Run 1 successfully training!
+[2025-04-10 22:54:14,138][root][INFO] - Iteration 0: Code Run 2 successfully training!
+[2025-04-10 22:54:18,307][root][INFO] - Iteration 0: Code Run 3 successfully training!
+[2025-04-10 22:54:22,834][root][INFO] - Iteration 0: Code Run 4 successfully training!
+[2025-04-10 22:54:26,906][root][INFO] - Iteration 0: Code Run 5 successfully training!
+[2025-04-10 22:54:31,892][root][INFO] - Iteration 0: Code Run 6 successfully training!
+[2025-04-10 22:54:36,628][root][INFO] - Iteration 0: Code Run 7 successfully training!
+[2025-04-10 22:54:41,149][root][INFO] - Best agent in iteration 0 is agent_iter0_response5.py with score 10.5
+[2025-04-10 22:58:16,202][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-10 22:58:21,293][root][INFO] - Iteration 1: Code Run 1 successfully training!
+[2025-04-10 22:58:25,990][root][INFO] - Iteration 1: Code Run 2 successfully training!
+[2025-04-10 22:58:30,758][root][INFO] - Iteration 1: Code Run 3 successfully training!
+[2025-04-10 22:58:35,160][root][INFO] - Iteration 1: Code Run 4 successfully training!
+[2025-04-10 22:58:39,218][root][INFO] - Iteration 1: Code Run 5 successfully training!
+[2025-04-10 22:58:44,382][root][INFO] - Iteration 1: Code Run 6 successfully training!
+[2025-04-10 22:58:49,823][root][INFO] - Iteration 1: Code Run 7 successfully training!
+[2025-04-10 22:58:55,277][root][INFO] - Best agent in iteration 1 is agent_iter1_response6.py with score 14.4
+[2025-04-10 23:02:21,416][root][INFO] - Iteration 2: Code Run 0 successfully training!
+[2025-04-10 23:02:25,618][root][INFO] - Iteration 2: Code Run 1 successfully training!
+[2025-04-10 23:02:29,804][root][INFO] - Iteration 2: Code Run 2 successfully training!
+[2025-04-10 23:02:34,040][root][INFO] - Iteration 2: Code Run 3 successfully training!
+[2025-04-10 23:02:38,574][root][INFO] - Iteration 2: Code Run 4 successfully training!
+[2025-04-10 23:02:42,958][root][INFO] - Iteration 2: Code Run 5 successfully training!
+[2025-04-10 23:02:47,186][root][INFO] - Iteration 2: Code Run 6 successfully training!
+[2025-04-10 23:02:51,384][root][INFO] - Iteration 2: Code Run 7 successfully training!
+[2025-04-10 23:05:20,868][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 23:06:23,206][urllib3.connectionpool][WARNING] - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 23:09:09,181][root][INFO] - Iteration 3: Code Run 0 successfully training!
+[2025-04-10 23:09:13,398][root][INFO] - Iteration 3: Code Run 1 successfully training!
+[2025-04-10 23:09:18,539][root][INFO] - Iteration 3: Code Run 2 successfully training!
+[2025-04-10 23:09:22,933][root][INFO] - Iteration 3: Code Run 3 successfully training!
+[2025-04-10 23:09:27,175][root][INFO] - Iteration 3: Code Run 4 successfully training!
+[2025-04-10 23:09:31,344][root][INFO] - Iteration 3: Code Run 5 successfully training!
+[2025-04-10 23:09:35,923][root][INFO] - Iteration 3: Code Run 6 successfully training!
+[2025-04-10 23:09:40,393][root][INFO] - Iteration 3: Code Run 7 successfully training!
+[2025-04-10 23:09:44,972][root][INFO] - Best agent in iteration 3 is agent_iter3_response1.py with score 7.8
+[2025-04-10 23:09:45,059][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')': /v1/chat/completions
+[2025-04-10 23:13:22,809][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 23:14:42,111][root][INFO] - Iteration 4: Code Run 0 successfully training!
+[2025-04-10 23:14:47,068][root][INFO] - Iteration 4: Code Run 1 successfully training!
+[2025-04-10 23:14:51,929][root][INFO] - Iteration 4: Code Run 2 successfully training!
+[2025-04-10 23:14:56,589][root][INFO] - Iteration 4: Code Run 3 successfully training!
+[2025-04-10 23:15:01,354][root][INFO] - Iteration 4: Code Run 4 successfully training!
+[2025-04-10 23:15:05,502][root][INFO] - Iteration 4: Code Run 5 successfully training!
+[2025-04-10 23:15:09,725][root][INFO] - Iteration 4: Code Run 6 successfully training!
+[2025-04-10 23:15:13,994][root][INFO] - Iteration 4: Code Run 7 successfully training!
+[2025-04-10 23:15:18,808][root][INFO] - Best agent in iteration 4 is agent_iter4_response7.py with score 13.2
+[2025-04-10 23:18:23,536][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 23:20:25,752][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-10 23:20:25,825][urllib3.connectionpool][WARNING] - Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')': /v1/chat/completions
+[2025-04-10 23:21:40,965][root][INFO] - Iteration 5: Code Run 0 successfully training!
+[2025-04-10 23:21:45,741][root][INFO] - Iteration 5: Code Run 1 successfully training!
+[2025-04-10 23:21:50,144][root][INFO] - Iteration 5: Code Run 2 successfully training!
+[2025-04-10 23:21:54,663][root][INFO] - Iteration 5: Code Run 3 successfully training!
+[2025-04-10 23:21:59,597][root][INFO] - Iteration 5: Code Run 4 successfully training!
+[2025-04-10 23:22:04,489][root][INFO] - Iteration 5: Code Run 5 successfully training!
+[2025-04-10 23:22:09,582][root][INFO] - Iteration 5: Code Run 6 successfully training!
+[2025-04-10 23:22:14,308][root][INFO] - Iteration 5: Code Run 7 successfully training!
+[2025-04-10 23:22:19,300][root][INFO] - Best agent in iteration 5 is agent_iter5_response7.py with score 12.9
+[2025-04-10 23:25:28,330][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions

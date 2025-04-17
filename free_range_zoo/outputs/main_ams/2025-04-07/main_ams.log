@@ -1,0 +1,90 @@
+[2025-04-07 15:40:10,703][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 15:40:10,703][root][INFO] - Task: wildfire
+[2025-04-07 15:40:10,703][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 15:40:40,461][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-07 15:41:08,260][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-07 15:41:24,577][root][INFO] - Iteration 2: Code Run 0 execution error!
+[2025-04-07 15:41:48,935][root][INFO] - Iteration 3: Code Run 0 execution error!
+[2025-04-07 16:22:00,798][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 16:22:00,798][root][INFO] - Task: wildfire
+[2025-04-07 16:22:00,798][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 16:23:30,464][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-07 16:23:35,085][root][INFO] - Iteration 0: Code Run 1 execution error!
+[2025-04-07 16:23:39,635][root][INFO] - Iteration 0: Code Run 2 execution error!
+[2025-04-07 16:23:43,610][openai][INFO] - error_code=None error_message='fetch failed: {"url":"https://chatgpt.com/backend-api/conversation","data":{"status":413,"detail":{"message":"The message you submitted was too long, please reload the conversation and submit something shorter.","code":"message_length_exceeds_limit"}}}' error_param= error_type= message='OpenAI API error received' stream_error=False
+[2025-04-07 16:34:51,909][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 16:34:51,909][root][INFO] - Task: wildfire
+[2025-04-07 16:34:51,909][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 16:35:53,047][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 16:35:53,047][root][INFO] - Task: wildfire
+[2025-04-07 16:35:53,047][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 16:37:28,218][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-07 16:37:32,910][root][INFO] - Iteration 0: Code Run 1 successfully training!
+[2025-04-07 16:37:32,911][root][INFO] - Best agent in iteration 0 is agent_iter0_response0.py with score 9.0
+[2025-04-07 16:38:41,364][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-07 16:38:45,913][root][INFO] - Iteration 1: Code Run 1 execution error!
+[2025-04-07 16:39:39,811][root][INFO] - Iteration 2: Code Run 0 execution error!
+[2025-04-07 16:39:44,457][root][INFO] - Iteration 2: Code Run 1 execution error!
+[2025-04-07 16:54:09,139][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 16:54:09,139][root][INFO] - Task: wildfire
+[2025-04-07 16:54:09,139][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 16:58:16,760][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-07 16:58:21,336][root][INFO] - Iteration 0: Code Run 1 execution error!
+[2025-04-07 16:58:25,877][root][INFO] - Iteration 0: Code Run 2 execution error!
+[2025-04-07 16:58:30,549][root][INFO] - Iteration 0: Code Run 3 execution error!
+[2025-04-07 16:58:35,106][root][INFO] - Iteration 0: Code Run 4 execution error!
+[2025-04-07 16:58:39,537][root][INFO] - Iteration 0: Code Run 5 execution error!
+[2025-04-07 16:58:43,970][root][INFO] - Iteration 0: Code Run 6 execution error!
+[2025-04-07 16:58:48,581][root][INFO] - Iteration 0: Code Run 7 execution error!
+[2025-04-07 16:58:53,153][root][INFO] - Iteration 0: Code Run 8 successfully training!
+[2025-04-07 16:58:57,766][root][INFO] - Iteration 0: Code Run 9 execution error!
+[2025-04-07 17:01:02,611][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-07 17:01:07,262][root][INFO] - Iteration 1: Code Run 1 execution error!
+[2025-04-07 17:01:11,838][root][INFO] - Iteration 1: Code Run 2 execution error!
+[2025-04-07 17:01:16,556][root][INFO] - Iteration 1: Code Run 3 execution error!
+[2025-04-07 17:01:21,026][root][INFO] - Iteration 1: Code Run 4 execution error!
+[2025-04-07 17:01:25,732][root][INFO] - Iteration 1: Code Run 5 execution error!
+[2025-04-07 17:01:30,301][root][INFO] - Iteration 1: Code Run 6 execution error!
+[2025-04-07 17:01:34,855][root][INFO] - Iteration 1: Code Run 7 execution error!
+[2025-04-07 17:01:39,492][root][INFO] - Iteration 1: Code Run 8 execution error!
+[2025-04-07 17:01:44,136][root][INFO] - Iteration 1: Code Run 9 execution error!
+[2025-04-07 17:08:25,098][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-07 17:08:25,099][root][INFO] - Task: wildfire
+[2025-04-07 17:08:25,099][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-07 17:12:50,860][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-07 17:12:55,386][root][INFO] - Iteration 0: Code Run 1 execution error!
+[2025-04-07 17:13:00,081][root][INFO] - Iteration 0: Code Run 2 execution error!
+[2025-04-07 17:13:04,549][root][INFO] - Iteration 0: Code Run 3 execution error!
+[2025-04-07 17:13:09,112][root][INFO] - Iteration 0: Code Run 4 execution error!
+[2025-04-07 17:13:13,559][root][INFO] - Iteration 0: Code Run 5 execution error!
+[2025-04-07 17:13:18,132][root][INFO] - Iteration 0: Code Run 6 execution error!
+[2025-04-07 17:13:22,765][root][INFO] - Iteration 0: Code Run 7 execution error!
+[2025-04-07 17:13:27,257][root][INFO] - Iteration 0: Code Run 8 execution error!
+[2025-04-07 17:15:23,211][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-07 17:15:27,776][root][INFO] - Iteration 1: Code Run 1 execution error!
+[2025-04-07 17:15:32,339][root][INFO] - Iteration 1: Code Run 2 execution error!
+[2025-04-07 17:15:36,791][root][INFO] - Iteration 1: Code Run 3 execution error!
+[2025-04-07 17:15:41,284][root][INFO] - Iteration 1: Code Run 4 execution error!
+[2025-04-07 17:15:45,773][root][INFO] - Iteration 1: Code Run 5 execution error!
+[2025-04-07 17:15:50,199][root][INFO] - Iteration 1: Code Run 6 execution error!
+[2025-04-07 17:15:54,701][root][INFO] - Iteration 1: Code Run 7 execution error!
+[2025-04-07 17:15:59,266][root][INFO] - Iteration 1: Code Run 8 execution error!
+[2025-04-07 17:18:50,857][root][INFO] - Iteration 2: Code Run 0 execution error!
+[2025-04-07 17:18:55,342][root][INFO] - Iteration 2: Code Run 1 execution error!
+[2025-04-07 17:18:59,981][root][INFO] - Iteration 2: Code Run 2 execution error!
+[2025-04-07 17:19:04,701][root][INFO] - Iteration 2: Code Run 3 execution error!
+[2025-04-07 17:19:09,387][root][INFO] - Iteration 2: Code Run 4 execution error!
+[2025-04-07 17:19:13,931][root][INFO] - Iteration 2: Code Run 5 execution error!
+[2025-04-07 17:19:18,435][root][INFO] - Iteration 2: Code Run 6 execution error!
+[2025-04-07 17:19:23,087][root][INFO] - Iteration 2: Code Run 7 execution error!
+[2025-04-07 17:19:27,688][root][INFO] - Iteration 2: Code Run 8 execution error!
+[2025-04-07 17:22:29,745][root][INFO] - Iteration 3: Code Run 0 execution error!
+[2025-04-07 17:22:34,476][root][INFO] - Iteration 3: Code Run 1 execution error!
+[2025-04-07 17:22:39,123][root][INFO] - Iteration 3: Code Run 2 execution error!
+[2025-04-07 17:22:43,876][root][INFO] - Iteration 3: Code Run 3 execution error!
+[2025-04-07 17:22:48,447][root][INFO] - Iteration 3: Code Run 4 execution error!
+[2025-04-07 17:22:53,032][root][INFO] - Iteration 3: Code Run 5 execution error!
+[2025-04-07 17:22:57,658][root][INFO] - Iteration 3: Code Run 6 execution error!
+[2025-04-07 17:23:02,363][root][INFO] - Iteration 3: Code Run 7 execution error!
+[2025-04-07 17:23:06,884][root][INFO] - Iteration 3: Code Run 8 execution error!
+[2025-04-07 17:25:50,405][openai][INFO] - error_code=pre_consume_token_quota_failed error_message=令牌[ZyDHI**************************************82dCa]额度不足 error_param= error_type=shell_api_error message='OpenAI API error received' stream_error=False

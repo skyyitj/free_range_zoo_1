@@ -1,0 +1,26 @@
+[2025-04-06 09:47:46,125][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-06 09:47:46,125][root][INFO] - Task: wildfire
+[2025-04-06 09:47:46,125][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-06 09:48:21,639][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-06 09:48:21,640][root][INFO] - Task: wildfire
+[2025-04-06 09:48:21,640][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-06 09:48:40,446][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-06 09:49:00,358][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-06 10:39:22,383][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-06 10:39:22,383][root][INFO] - Task: wildfire
+[2025-04-06 10:39:22,384][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-06 10:39:25,392][openai][INFO] - error_code=insufficient_user_quota error_message='user quota is not enough (request id: 20250406103925144141086153D0v1E)' error_param= error_type=new_api_error message='OpenAI API error received' stream_error=False
+[2025-04-06 11:16:18,059][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-06 11:16:18,059][root][INFO] - Task: wildfire
+[2025-04-06 11:16:18,059][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-06 11:16:54,565][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-06 11:17:28,542][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-06 11:49:17,678][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-06 11:49:17,679][root][INFO] - Task: wildfire
+[2025-04-06 11:49:17,679][root][INFO] - Task description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.
+[2025-04-06 11:49:22,239][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-06 11:49:26,900][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-06 11:49:27,453][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')': /v1/chat/completions
+[2025-04-06 11:49:48,769][root][INFO] - Iteration 2: Code Run 0 execution error!
+[2025-04-06 11:51:08,018][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'RemoteDisconnected('Remote end closed connection without response')': /v1/chat/completions
+[2025-04-06 11:51:28,219][root][INFO] - Iteration 3: Code Run 0 execution error!

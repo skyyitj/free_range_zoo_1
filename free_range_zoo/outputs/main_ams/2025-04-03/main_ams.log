@@ -1,0 +1,87 @@
+[2025-04-03 00:02:22,226][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:02:22,226][root][INFO] - Task: wildfire
+[2025-04-03 00:02:22,226][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:02:23,654][openai][INFO] - error_code=insufficient_user_quota error_message='user quota is not enough (request id: 20250403000223390543609fxOPIb3E)' error_param= error_type=new_api_error message='OpenAI API error received' stream_error=False
+[2025-04-03 00:14:01,800][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:14:01,800][root][INFO] - Task: wildfire
+[2025-04-03 00:14:01,800][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:14:03,401][openai][INFO] - error_code=insufficient_user_quota error_message='user quota is not enough (request id: 20250403001403108195970Zph6JfAb)' error_param= error_type=new_api_error message='OpenAI API error received' stream_error=False
+[2025-04-03 00:16:15,572][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:16:15,572][root][INFO] - Task: wildfire
+[2025-04-03 00:16:15,573][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:16:40,929][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:17:10,207][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:17:37,662][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:17:37,662][root][INFO] - Task: wildfire
+[2025-04-03 00:17:37,662][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:17:37,663][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:17:37,664][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:21:11,986][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:21:11,986][root][INFO] - Task: wildfire
+[2025-04-03 00:21:11,986][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:21:11,987][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:21:11,988][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:33:04,026][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:33:04,026][root][INFO] - Task: wildfire
+[2025-04-03 00:33:04,026][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:33:04,027][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:33:04,028][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:36:43,135][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:36:43,135][root][INFO] - Task: wildfire
+[2025-04-03 00:36:43,135][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:36:47,765][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:36:47,765][root][INFO] - Best agent in iteration 0 is agent_iter0_response0.py with score 9.0
+[2025-04-03 00:37:21,480][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:37:21,481][root][INFO] - Best agent in iteration 1 is agent_iter1_response0.py with score 18.0
+[2025-04-03 00:40:47,758][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:40:47,758][root][INFO] - Task: wildfire
+[2025-04-03 00:40:47,758][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:40:47,760][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:40:47,762][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:43:10,893][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 00:43:10,893][root][INFO] - Task: wildfire
+[2025-04-03 00:43:10,893][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 00:43:15,387][root][INFO] - Iteration 0: Code Run 0 successfully training!
+[2025-04-03 00:43:15,387][root][INFO] - Best agent in iteration 0 is agent_iter0_response0.py with score 3.0
+[2025-04-03 00:43:43,066][root][INFO] - Iteration 1: Code Run 0 successfully training!
+[2025-04-03 00:43:43,066][root][INFO] - Best agent in iteration 1 is agent_iter1_response0.py with score 9.0
+[2025-04-03 13:54:28,926][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 13:54:28,926][root][INFO] - Task: wildfire
+[2025-04-03 13:54:28,926][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 13:54:33,394][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 13:54:33,533][urllib3.connectionpool][WARNING] - Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')': /v1/chat/completions
+[2025-04-03 13:55:01,454][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-03 14:42:34,486][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 14:42:34,486][root][INFO] - Task: wildfire
+[2025-04-03 14:42:34,486][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 14:42:38,728][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 14:42:40,544][openai][INFO] - error_code=insufficient_user_quota error_message='user quota is not enough (request id: 20250403144240292898828nufE2ZQN)' error_param= error_type=new_api_error message='OpenAI API error received' stream_error=False
+[2025-04-03 14:54:06,238][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 14:54:06,238][root][INFO] - Task: wildfire
+[2025-04-03 14:54:06,238][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 14:54:10,427][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 15:08:48,931][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 15:08:48,931][root][INFO] - Task: wildfire
+[2025-04-03 15:08:48,931][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 15:08:53,058][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 15:08:57,485][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-03 15:44:41,627][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 15:44:41,627][root][INFO] - Task: wildfire
+[2025-04-03 15:44:41,627][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 15:44:45,859][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 15:45:05,712][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-03 23:50:20,437][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 23:50:20,437][root][INFO] - Task: wildfire
+[2025-04-03 23:50:20,437][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 23:50:24,559][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 23:51:00,862][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-03 23:54:10,339][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 23:54:10,339][root][INFO] - Task: wildfire
+[2025-04-03 23:54:10,339][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 23:54:14,499][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 23:54:18,666][root][INFO] - Iteration 1: Code Run 0 execution error!
+[2025-04-03 23:56:22,954][root][INFO] - Using LLM: gpt-4-0613
+[2025-04-03 23:56:22,954][root][INFO] - Task: wildfire
+[2025-04-03 23:56:22,955][root][INFO] - Task description: Detailed task description for wildfire task
+[2025-04-03 23:56:27,267][root][INFO] - Iteration 0: Code Run 0 execution error!
+[2025-04-03 23:56:47,077][root][INFO] - Iteration 1: Code Run 0 execution error!
