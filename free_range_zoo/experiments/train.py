@@ -50,7 +50,8 @@ print('Configuration: WS{}'.format(rd_num))
 with open(os.path.join(f"/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS{rd_num}.pkl"), "rb") as file:
     wildfire_configuration = pickle.load(file)
 
-
+print(wildfire_configuration)
+exit(0)
 env = wildfire_v0.parallel_env(
     max_steps=100,
     parallel_envs=1,

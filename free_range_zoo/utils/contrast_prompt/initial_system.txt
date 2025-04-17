@@ -1,0 +1,13 @@
+# Task
+Design policy functions for a grid wildfire simulation system.
+
+# Objective
+Create a policy function that optimally assigns firefighting tasks to agents for rapid fire suppression.
+
+# Requirements
+1. Use the exact policy signature: {policy_signature}
+2. Only modify the function body
+3. Do not alter the function signature
+
+
+
