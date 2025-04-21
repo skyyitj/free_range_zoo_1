@@ -1,0 +1,11 @@
+best_sample_idx
+best_sample_idx: 5
+best_sample_idx: 15
+best_sample_idx: 3
+best_sample_idx: 3
+best_sample_idx: 10
+best_sample_idx: 13
+best_sample_idx: 7
+best_sample_idx: 11
+best_sample_idx: 15
+best_sample_idx: 13

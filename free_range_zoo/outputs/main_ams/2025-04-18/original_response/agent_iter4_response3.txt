@@ -1,0 +1,45 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+    distance_temperature = 0.2  # introduce a temperature parameter to adjust the score for distance
+    suppression_temperature = 0.4  # introduce a temperature parameter to adjust the score for suppression power
+    level_temperature = 0.3  # introduce a temperature parameter to adjust the score for fire level
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor in task selection
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        # Include the fire level as an additional factor to prioritize fires with higher levels
+        # Introduce a soft-max function with temperature to the score computation to amplify the differentiation between fires
+        # which have different scores
+        # Adjust the weights of the distance, suppression power and fire level in the overall score 
+        # according to the evaluation results and requirements of the task
+        score = np.exp(fire_weight * ((suppression_power / suppression_temperature) / (dist / distance_temperature) + fire_level / level_temperature))
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In the revised policy, we add temperature parameters for distance-based factor, firefighting efficiency factor and fire level to separately adjust the weights of these factors in scoring fire tasks. The adjustment of the temperature parameters will influence which factor the policy pays more attention to.

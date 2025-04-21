@@ -1,0 +1,15 @@
+# Changes explained for the policy function: 
+
+1. Distance between the fire and the agent plays a significant role in deciding the severity of the fire that an agent can attempt to put out. Here, the distance is being normalized using the exponential decay function. The temperature for distance normalization is fine-tuned to 0.1. This will make the distance factor more influential in the task scoring.
+
+2. Fire intensity is also an important factor in deciding which task an agent should pick. If the fire intensity is high, it might not be a good idea to focus on that task due to constraint in agent's resources. So, the agent should focus on fires with lower intensity. Here, I propose to adjust the temperature value for fire intensity normalization to 2.0 to reduce its influence on task scoring.
+
+3. Fire's priority weight has been taken into consideration. The task score is being calculated by multiplying the exponential distance, exponential intensity and the exponential weight by the multiplication factor of agent's fire reduction power and the available suppressant. To increase its influence on the task selection, the temperature for task priority weight normalization should be decreased. A value of 0.5 is proposed.
+
+4. The multiplication factor of the agent's fire reduction power and available suppressant acts as a bias to the task score. High-powered agents with more suppressant would always score more even if the fires are less severe and far apart. This could create an imbalance between agents assignment, where a few agents are overloaded while others are idle. To reduce this imbalance, the influence of this multiplication factor needs to be reduced by normalizing it using an exponential decay function. Here, the temperature is fine-tuned to 5.0.
+
+5. To ensure that distance doesn't over-influence the decision, we need to normalize it with respect to the maximum possible distance. This could help in maintaining the scale of the distance factor, and it could assist in providing more balanced decision making. For this, the maximum distance the agent can travel is used to normalize the distance factor.
+
+6. A new variable was created to account for the average intensity of fire that each agent has extinguished in the past. This will make sure agents are incentivized to engage with fires of different intensities, instead of always picking the easiest tasks. The average past intensity is subtracted from the current task's fire intensity before normalization. The temperature for this normalization is adjusted to 1.0.
+
+This policy includes updates from feedback and also includes some new innovative thoughts. The policy parameters are fine-tuned based on the performance on a range of simulations. The policy is designed to assign tasks to agents optimally and it enhances the agents' ability to mitigate fires, while ensuring that resources are utilized efficiently.

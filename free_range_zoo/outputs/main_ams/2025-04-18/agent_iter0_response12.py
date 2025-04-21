@@ -1,0 +1,62 @@
+import numpy as np
+from typing import Tuple, List
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,               
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],               
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             
+) -> int:
+
+    # Variables for Normalization
+    fire_temp = 10
+    suppressant_temp = 10
+    distance_temp = 10
+
+    num_tasks = len(fire_pos)    # total number of fire tasks
+
+    # Score for each task - highest score is best
+    task_scores = []
+
+    for i in range(num_tasks):
+        
+        #===================== Fire Intensity Factor ====================#
+        # Higher fire intensity will give higher value
+        # This will make sure fire with high intensity is given priority
+        # with respect to agent's reduction power
+        fire_intensity =  (fire_levels[i]*fire_intensities[i])/agent_fire_reduction_power
+        fire_score = np.exp(fire_intensity / fire_temp)
+
+        #===================== Suppressant Factor ====================#
+        # Tasks where agent has sufficient suppressant to handle, those will have higher value
+        # The agent will pick the task it knows it can complete
+        suppressant_needed = (fire_levels[i]*fire_intensities[i])/agent_fire_reduction_power
+        suppressant_score = np.exp(-abs(suppressant_needed - agent_suppressant_num) / suppressant_temp)
+
+        #===================== Distance Factor ====================#
+        # Close proximity task should have higher value
+        # Euclidean distance from agent to the fire task
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Total task score - combination of fire score, suppressant score, distance score and weights
+        # Onto this we apply the task weight given for priority
+
+        total_score = fire_score * suppressant_score * distance_score * fire_putout_weight[i]
+        task_scores.append(total_score)
+
+    # Task with the maximum score is chosen by the agent
+    chosen_task = np.argmax(task_scores)
+        
+    return chosen_task  # return the index of the chosen task

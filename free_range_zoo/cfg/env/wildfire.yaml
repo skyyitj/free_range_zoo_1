@@ -1,0 +1,3 @@
+task: wildfire
+env_name: wildfire
+description: Coordinate multiple firefighting agents to suppress wildfires in a grid environment. Agents must manage their resources (power and suppressant) while considering equipment status and environmental impact. The environment is dynamic and partially observable, with fires that can spread across adjacent tiles and vary in intensity. Fires can also burn out once they reach a certain intensity threshold.The goal is to minimize fire spread and intensity while optimizing resource usage and preventing equipment damage.

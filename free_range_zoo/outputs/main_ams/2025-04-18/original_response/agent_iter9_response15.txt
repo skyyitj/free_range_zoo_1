@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    #Adjust temperature parameters
+    dist_temperature = 0.4  # Increased to further prioritize closer targets.
+    suppress_power_temperature = 0.03  # Increased to put more emphasis on fire reducing power
+    fire_level_temperature = 1.2  # More emphasis on fires that are likely to grow more quickly.
+
+    #Enhancement: Add a mechanism to avoid multiple agents targeting the same fire
+    other_agents_target = [0]*len(fire_pos)  # Initialise list to count how many agents target each fire
+    for agent in other_agents_pos:
+        dist_to_fire = [((fpos[0]-agent[0])**2 + (fpos[1]-agent[1])**2)**0.5 for fpos in fire_pos]
+        other_agents_target[np.argmin(dist_to_fire)] += 1  # Assume other agents will head to the nearest fire
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        #distance factor
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1e-7)
+
+        #firefighting efficiency factor
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        #Consider the fire putout weight as well as other parameters
+        score = np.exp((fire_weight * (fire_level+1e-7) / ((dist_temperature * dist + 1) * (other_agents_target[i]+1)) + suppression_power * suppress_power_temperature) / fire_level_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this revised policy, in addition to adjusting the weights for distance, fire reduction power and fire level, an additional change was made to consider other agents' likely targets. By assuming that each other agent will target the fire nearest to it, the policy can increase the score for fires not being targeted by any other agent and decrease the score for fires being targeted by multiple agents, helping to avoid all agents clustering around a single fire while others are left unattended.

@@ -1,0 +1,41 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+    temperature = 0.2  # Adjusting temperature parameter to balance metrics
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Modify distance-based factor for task selection to consider suppressant remaining
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num**0.5 + 1)
+
+        # Modify firefighting efficiency factor in task selection to consider fire intensity
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num**0.5 / (fire_intensity**0.5 + 1)
+
+        # Modify score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        # Adjust fire level as an additional factor to prioritize fires with higher levels with a power of 0.5
+        # Adjust soft-max function with temperature to the score computation to control the differentiation between fires
+        score = np.exp((fire_weight * suppression_power / (dist**0.5 + 1) + fire_level**0.5) / temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+I made several changes to the policy function to make it perform better. Specifically, I adjusted the distance measurement and suppression power calculation to be proportional to the square root of the suppressant available and the square root of the fire intensity respectively. This should improve the policy function's choice of fires to fight because it causes the agent to be more conservative when it has low suppressant and to prioritize intense fires more. I also adjusted the scoring calculation by applying the square root of the fire level and the distance, which again makes the agent prioritize intense fires more and avoid distant fires when the suppressant is low. Finally, I increased the temperature parameter to make the agent's selections more robust to small differences in scores.

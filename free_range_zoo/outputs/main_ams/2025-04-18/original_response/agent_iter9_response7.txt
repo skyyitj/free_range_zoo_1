@@ -1,0 +1,40 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    # Adjusting Scoring Criteria 
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.5 # increased to prioritize nearby fires further
+    suppress_power_temperature = 0.05 # increased to give more weight to agent's suppression power
+    fire_level_temperature = 1.0 # keep the same to continue favoring lower fire levels
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor importance is increased
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1e-7)
+
+        # Modified Firefighting efficiency factor for higher importance
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation favoring distance, firefighting efficiency, and lower fire intensity
+        score = np.exp((fire_weight * (fire_level+1e-7) / (dist_temperature * dist + 1) + suppression_power * suppress_power_temperature) / fire_level_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this new policy, the temperature parameters for both distance factor and suppression power have been increased. The intention of these changes is to further encourage agents to prioritize nearby fires and allow them to utilize their suppression power more effectively. I believe these changes will increase the agents' resource efficiency and their firefighting effectiveness, which should translate to overall higher rewards and more fires extinguished.

@@ -1,0 +1,111 @@
+To solve this problem, we need to design the `single_agent_policy` function that determines the best fire task for each agent to handle, based on fire intensity, available suppressant resources, and the reward weight for each fire task. The policy should balance the urgency of fire suppression with resource management, ensuring agents are most effective in controlling the fire spread and prioritizing tasks accordingly.
+
+### Approach Outline:
+
+1. **Task Scoring**:
+    - For each fire, calculate a "score" that combines several factors:
+        - **Fire intensity**: Higher intensity fires are more critical to suppress.
+        - **Fire level**: Fires with higher levels may self-extinguish, but they could also penalize agents if they grow too large.
+        - **Agent's capability**: The agent's suppression power and remaining suppressant resources determine how effectively they can reduce fire intensity.
+        - **Task reward weight**: Higher reward weights indicate more critical fire suppression tasks.
+  
+2. **Fire Intensity Adjustment**:
+    - For each fire, compute how much of its intensity the agent can reduce based on their suppressant resources and suppression power.
+    - After reduction, if any fire still has remaining intensity, it should be considered for spreading.
+
+3. **Task Prioritization**:
+    - For each fire, score it using the above factors, where the highest score indicates the most critical fire task.
+    - Normalize or transform scores using an exponential function to enhance task prioritization. 
+
+4. **Selection**:
+    - The task with the highest score is chosen for assignment to the agent.
+
+### Updated Function Implementation:
+
+```python
+import math
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                     # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Parameters:
+        - fire_pos: Locations of fires (y, x)
+        - fire_levels: Current fire intensity at each location
+        - fire_intensities: Intensity values of the fire
+        - fire_putout_weight: Task weight for prioritization
+
+    Returns:
+        int: Index of the selected fire task
+    """
+    
+    # Temperature variables for scoring transformation (fine-tuning prioritization)
+    intensity_temp = 1.0
+    weight_temp = 1.0
+    
+    # Calculate task scores for each fire
+    task_scores = []
+    for i in range(len(fire_pos)):
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        task_weight = fire_putout_weight[i]
+        
+        # Calculate the potential reduction of fire intensity based on available suppressant
+        fire_reduction = min(fire_intensity, agent_suppressant_num * agent_fire_reduction_power)
+        
+        # After reduction, calculate the remaining intensity
+        remaining_intensity = fire_intensity - fire_reduction
+        
+        # Priority scoring: Combine intensity, fire level, and weight for each fire task
+        fire_score = (remaining_intensity ** intensity_temp) * (task_weight ** weight_temp)
+
+        # Penalty for high fire levels that are about to self-extinguish (if intensity is still positive)
+        if remaining_intensity <= 0 and fire_level > 0:
+            fire_score -= 5  # Penalize if fire will self-extinguish due to level threshold
+        
+        task_scores.append(fire_score)
+    
+    # Normalize scores using exponential transformation for better differentiation
+    max_score = max(task_scores)
+    exp_scores = [math.exp(score - max_score) for score in task_scores]  # Avoid overflow, shift scores
+
+    # Select the fire task with the highest transformed score
+    selected_task = exp_scores.index(max(exp_scores))
+    
+    return selected_task
+```
+
+### Explanation of the Design:
+
+1. **Temperature Variables**:
+    - `intensity_temp` and `weight_temp` control the sensitivity of scoring to fire intensity and task weight, respectively. These can be adjusted to fine-tune how strongly each factor influences the final score.
+
+2. **Task Scoring**:
+    - We first calculate how much fire intensity can be reduced based on the agent's suppression power and available suppressant.
+    - The remaining fire intensity after suppression is used in the score, where higher remaining intensity (i.e., less suppression) is penalized.
+    - The reward weight is then factored into the score. We use exponential transformation (`math.exp`) on the scores to make the differences between tasks more pronounced, especially for high-intensity tasks.
+
+3. **Penalizing Self-Extinguishing Fires**:
+    - If the fire intensity goes to zero and the fire level is above zero, this indicates that the fire is about to self-extinguish. A penalty is added to reduce the attractiveness of handling such fires.
+
+4. **Final Task Selection**:
+    - After calculating the scores, we select the task with the highest score using the exponential transformation to emphasize the most critical tasks.
+
+### Considerations:
+- This policy is adaptive based on the remaining suppressant and suppression power of the agent.
+- It is flexible and can prioritize tasks based on fire intensity, the remaining suppressant, and the importance of the fire task (reward weight).
+- The penalty mechanism ensures that agents do not waste resources on fires that are about to self-extinguish, but it also keeps track of their effect on the environment.
+
+This policy should effectively guide agents in assigning their efforts to the most urgent and rewarding firefighting tasks while managing their resources.

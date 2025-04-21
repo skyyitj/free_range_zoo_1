@@ -1,0 +1,47 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int: 
+
+    # Adjust scoring criteria  
+    max_distance = max([max(fire_pos,key= lambda x: abs(x[0]-agent_pos[0])**2 + abs(x[1]-agent_pos[1])**2) for fire_pos in fire_pos])
+    num_fires = len(fire_pos)
+    max_rewards = sum(sorted(fire_putout_weight)[-num_fires:])
+
+    # Track highest score 
+    max_score = -float('inf')
+    best_fire = None
+
+    # Adjust temperature coefficients for distance and suppression power factors
+    dist_temperature = 0.5
+    suppress_power_temperature = 0.25   
+    
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+        
+        # Recalculate observed max distance and observed total reward 
+        max_distance = max(max_distance, dist)
+        max_rewards = max(max_rewards, fire_weight)
+
+        # Scoring function now includes the reward and has a scaling factor depending on distance 
+        score = np.exp((fire_weight / max_rewards) + ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (dist_temperature * max_distance)) * suppression_power ** suppress_power_temperature
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire

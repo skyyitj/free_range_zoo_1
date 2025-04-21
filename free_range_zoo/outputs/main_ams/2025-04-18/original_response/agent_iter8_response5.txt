@@ -1,0 +1,47 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    # Adjust temperature coefficients to find a balance among different factors
+    dist_temperature = 0.05  # Adjusts the influence of distance
+    suppress_power_temperature = 0.1  # Adjusts the influence of suppression power
+    fire_level_temperature = 0.2  # Adjusts the influence of fire level
+    agent_concentration_temperature = 0.3  # Adjusts the influence of agent concentration
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Compute the weighted distance with penalty for lower suppressant amount
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Compute the agent's firefighting potency
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Compute agent concentration in a certain area, reduce score if too many agents already there
+        agent_concentration = sum([1 for pos in other_agents_pos if ((fire_position[0]-pos[0])**2 + (fire_position[1]-pos[1])**2)**0.5 < 2])
+
+        # Compute a score for each fire considering its weighting, distance from agent, and agent's firefighting potency
+        score = np.exp(fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level * fire_level_temperature - agent_concentration*agent_concentration_temperature) / suppress_power_temperature
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+The policy function has been revised to add a new factor - agent_concentration. If there are too many agents in a particular area, the score will be reduced. This allows each agent to distribute more evenly to different fires, rather than concentrating all agents on one or few fires. The temperature coefficients for each factor have also been adjusted to balance their influence on the computed score. Distances and agent's firefighting potency have a smaller temperature coefficient, so they have a smaller impact on the score; while the fire's level has a larger temperature coefficient, so it has a larger impact. This adjustment is made with the intention to prioritize more urgent fires with higher levels.

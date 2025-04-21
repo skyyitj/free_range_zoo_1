@@ -1,0 +1,44 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.1  # Adjust temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.05  # Adjust temperature coefficient to balance suppression power factor
+    fire_level_temperature = 0.02  # Adjust temperature coefficient to balance fire level factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, distance factor, and fire level.
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level * fire_level_temperature) / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+In the new policy, we adjust the temperature coefficients for the distance and suppression power factors, giving higher weight to the distance factor. This should enable the agents to prioritize fires closer to them, making the use of suppressants more efficient. It also reduces the weight of the firefighting efficiency factor, which will reduce the negative impact of having low suppressant resources on the agent's decision making. Therefore agents will be less likely to avoid fires based on having low suppressant resources.
+
+We also add a new component to the score calculation - fire_level_temperature. It will allow agent to consider the fire intensity level in its decision, thus forcing the agent to prioritize fires with higher intensity.

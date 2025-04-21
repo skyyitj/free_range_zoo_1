@@ -1,0 +1,54 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float] 
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_factor = 0.1  # Adjusting temperature scale 
+    suppress_factor = 0.2  # Reducing suppressant translation power factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5
+        dist = np.exp(-dist_factor * dist)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = (agent_fire_reduction_power * agent_suppressant_num) / (fire_intensity)
+        suppression_power = np.exp(suppress_factor * suppression_power)
+
+        # A new policy component - Fire level to firefighting power ratio
+        fire_level_ratio = fire_level / (agent_fire_reduction_power * agent_suppressant_num)
+        fire_level_ratio = np.exp(-fire_level_ratio)
+
+        # Taken into consideration the new fire-level ratio
+        score = fire_weight * suppression_power * dist * fire_level_ratio
+
+        # Further consideration of suppressant numbers
+        if agent_suppressant_num < fire_level:
+            score *= 0.5   # punishes low resources
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    # Reward large number of suppressants by adding a random factor
+    if agent_suppressant_num > max_score:
+        best_fire = np.random.choice(len(fire_pos))
+
+    return best_fire
+```
+In this adjusted policy, we factor in the relationship between the fire's intensity level and the agent's firefighting power to better distribute suppressants among various fires. We also consider the distance with more weight and add a measure to punish situations where the agent's suppressant resources are less than the fire level. A random element is introduced to occasionally choose a fire task when the agent has an overflow of suppressants for an element of unpredictability.

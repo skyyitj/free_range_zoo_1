@@ -1,0 +1,44 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    other_agents_pos: List[Tuple[float, float]],
+
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = -float('inf')
+    best_fire_idx = None
+    temperature = 0.01  # Adjust temperature to prioritize higher scoring tasks more
+
+    for fire_idx, (fire_level, fire_intensity, fire_location, fire_weight) in enumerate(zip(fire_levels, fire_intensities, fire_pos, fire_putout_weight)):
+        dist = ((fire_location[0]-agent_pos[0])**2 + (fire_location[1]-agent_pos[1])**2)**0.5
+
+        # Suppressant resource ratio
+        # Helps assign tasks manageable by the agent considering suppressant available
+        suppressant_ratio = agent_suppressant_num / (fire_intensity + 1)
+
+        # Agent effectiveness index considering both reduction power and suppressant available
+        agent_effectiveness = agent_fire_reduction_power * suppressant_ratio
+
+        # Consider both agent effectiveness and distance in task scoring.
+        # A more effective agent or closer fire will get a higher score
+        # Fire weight to prioritize higher weight fires
+        # np.exp() ensures the score is always positive
+        score = np.exp(fire_weight * agent_effectiveness / (dist + 1) / temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire_idx = fire_idx
+
+    return best_fire_idx
+```
+In this revised version, we prioritize more efficiently handled tasks by considering distance in the score calculation. We also incorporate fire weight into the score to add special attention to more critical fires.
+Furthermore, we lower the temperature in the exp() function, which increases the score difference among tasks and guides agents to dedicate more efforts to higher-score fires, further improving performance.

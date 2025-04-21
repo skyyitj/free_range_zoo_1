@@ -1,0 +1,44 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,               
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],   
+
+    fire_putout_weight: List[float],
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.05  # Adjust temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.5  # Adjust temperature coefficient to balance suppression power factor
+    fire_level_temperature = 0.2  # Adjust temperature coefficient to balance fire intensity level factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Fire intensity level factor with higher weight
+        fire_level_factor = np.exp(fire_level / fire_level_temperature)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, fire intensity level, and distance factor
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level_factor) / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In the improved policy, we introduce a new score component for fire intensity level with a corresponding adjustment factor. The aim is to give higher priority to fires with high intensity levels. The temperature coefficient for suppressant power was also decreased to reduce its impact on the score calculation and place more emphasis on the fire intensity level and distance factors in the decision-making process. This change should improve the agents' performance by enabling them to better balance the suppression power, distance, and fire intensity level factors in their task selection.

@@ -1,0 +1,42 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+    distance_temp = 0.05  # adjust the temperature parameter to calibrate scoring for distance factor
+    suppression_temp = 0.1  # temperature parameter to calibrate scoring for suppression power
+    level_temp = 0.2  # temperature parameter to calibrate scoring for fire level
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+        dist_score = np.exp(-dist / distance_temp)
+        
+        # Firefighting efficiency factor in task selection
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+        suppresion_score = np.exp(suppression_power / suppression_temp)
+
+        # Scoring based on fire level
+        level_score = np.exp(fire_level / level_temp)
+
+        # Score calculation considering prioritization weight and transformed ranking factors
+        score = fire_weight * dist_score * suppresion_score * level_score
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire

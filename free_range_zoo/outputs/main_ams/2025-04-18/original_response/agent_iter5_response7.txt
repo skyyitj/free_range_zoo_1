@@ -1,0 +1,39 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+    temperature = 0.01  # Lower the temperature parameter to further amplify the score differences
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+0.001)
+
+        # Firefighting efficiency factor in task selection
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 0.001)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        # Include the fire level as an additional factor to prioritize fires with higher levels
+        score = np.exp((fire_weight * suppression_power / (dist + 0.001) + 3 * fire_level) / temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this revised policy, we further decrease the temperature parameter to 0.01 to further differentiate the task scores and make the agent's choice more decisive. Also, we quadruple the weight of the fire level in the score calculation because the evaluation results show a relatively high number of burned-out fires, which indicates that the agent may not be adequately prioritizing fires with higher levels. The revised policy places more emphasis on the fire level in hopes of reducing the number of burned-out fires and thereby improve overall performance. Additionally, to avoid divisions by zero in the distance calculation and firefighting efficiency even when the agent has exhausted its suppressant or the fire intensity is 0, we add a small constant (0.001) to the denominators.

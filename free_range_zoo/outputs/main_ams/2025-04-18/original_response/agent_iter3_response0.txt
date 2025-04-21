@@ -1,0 +1,60 @@
+The feedback on the policy's evaluation indicates that there are multiple issues to address. In particular, the "Average Burning Number" is high, indicating that there are many unhandled fire cases. Also, the "Average Burnedout Number" shows that many fires are burning out without being addressed by the firefighters. We need a more efficient strategy in handling fires. The suppressant efficiency is nearly problemetic, indicating the suppressant is being spent inefficiently. 
+
+The following steps will be done to improve the policy function:
+
+1. Encourage each agent to choose a fire task that is closer to their current position, in order to reduce the time needed to reach the fire scene.
+
+2. Each agent should check whether other agents are heading to the same fire location, and the system should try to avoid assigning multiple agents to the same fire to prevent resource wastage.
+
+Here is the new policy function:
+
+```python
+import math
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = -1
+
+    # compute pairwise distance to help avoid collaboration on the same fire
+    pairwise_distance = np.zeros(len(fire_pos))
+
+    for agent in other_agents_pos:
+        dist = [((f[0]-agent[0])**2 + (f[1]-agent[1])**2)**0.5 for f in fire_pos]
+        pairwise_distance = [max(d, x) for d, x in zip(dist, pairwise_distance)]
+    
+    for i in range(len(fire_pos)):
+        # Distance to fire
+        dist = ((fire_pos[i][0] - agent_pos[0])**2 + (fire_pos[i][1] - agent_pos[1])**2)**0.5
+
+        # Firefighting efficiency
+        firefighting_efficiency = agent_fire_reduction_power / (fire_intensities[i] + 1)
+        
+        # Score computation
+        score = fire_putout_weight[i] * firefighting_efficiency / ((dist/agent_fire_reduction_power) + 1)
+        
+        # Prevent assigning the same fire task to multiple agents
+        score /= pairwise_distance[i] + 1
+
+        # Choose the task with the maximum score
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+This new policy function includes an additional consideration for the distances between other agents and the fires, discouraging redundant assignments of agents to the same fire. The policy function now computes a "score" for each fire task, considering the distance to the fire, the firefighting efficiency, and whether other agents are heading towards the same fire. The agent is then assigned to the task with the highest "score". This new policy function should make better use of the agents and their suppressant resources and be more efficient in handling the fires.

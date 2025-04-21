@@ -1,0 +1,65 @@
+Importantly, note the areas for policy improvement based on the evaluation feedback:
+
+1. Burning Number and Burnedout Number: Lowering these will ensure fewer tiles remain on fire and fewer fires extinguish themselves, improving efficiency and effectiveness.
+2. Used Suppressant: Decreasing this improves resource efficiency.
+3. Fire Intensity Change: This metric needs to increase, signifying better control of fires.
+4. Reward: Increasing this metric takes into account effect from changes to the other parameters.
+
+In the revised policy:
+
+1. We increase the parameter used to decide task score based on the remaining suppressant. This encourages the agent to conserve resources and focus more on critical tasks.
+2. In computing exp_distance, the sigmoid function is preferred over the exponential for a more gradual transition between focused tasks.
+3. We introduce a separate parameter for fire_levels apart from fire_intensity to account for the leaning towards self-extinguishing.
+4. Normalising factors - 'distance_temp' and 'level_temp' - are adjusted to affect the priority of tasks based on these factors.
+
+Here is the revised function :
+
+Import the necessary modules and functions:
+
+```python
+import math
+import numpy as np
+```
+
+Define the revised policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+
+    num_fires = len(fire_pos)
+    
+    distance_temp = 0.35
+    intensity_temp = 1.0
+    level_temp = 3.0
+    weight_temp = 2.5
+
+    task_scores = []
+    for i in range(num_fires):
+        distance = math.sqrt((agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2)
+        normalized_distance = 1 / (1 + np.exp(-distance / distance_temp))
+        
+        # Fire intensity and fire level is considered separately
+        exp_intensity = np.exp(-fire_intensities[i] / intensity_temp)
+        normalized_level = 1 / (1 + np.exp(-fire_levels[i] / level_temp))
+        
+        # Fire putout weight
+        exp_weight = np.exp(fire_putout_weight[i] / weight_temp)
+
+        # The factor of remaining suppressant was increased even further to encourage better resource conservation
+        task_score = normalized_distance * exp_intensity * normalized_level * exp_weight * (3 + agent_suppressant_num)
+
+        task_scores.append(task_score)
+
+    # Return the index of the fire task with maximum score
+    return task_scores.index(max(task_scores))
+```
+This new policy encourages more efficient resource consumption and equip the agents with better fire management strategies.

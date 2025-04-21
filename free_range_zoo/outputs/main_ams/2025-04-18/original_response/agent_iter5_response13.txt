@@ -1,0 +1,40 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = -float('inf')
+    best_fire = None
+    temperature = 0.04  # Slightly lower temperature to get the decision difference more clear
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        # Fire level is directly added to the score, to avoid the fire burning out due to constant high fire level
+        score = np.exp((fire_weight * suppression_power / (dist + 1) + fire_level) / temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In the revised policy, we further lower the temperature to emphasize the score difference. 
+The fire_level is directly added to the fire score instead of being multiplied by a coefficient, which can help the agent focus more on fires with higher levels and prevent them from burning out.

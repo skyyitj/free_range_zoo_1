@@ -1,0 +1,40 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.05  # Adjust temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.3  # Adjust temperature coefficient to balance suppression power factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with higher weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level) / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+As per the developed policy, the temperature coefficient of the suppression power factor is increased substantially from 0.1 to 0.3. This adjustment is anticipated to strengthen the impact of the firefighting efficiency measure on the assigning decisions which the agents undertake and guide agents towards fires where they can make the most significant and effective reduction with their current capacity. Therefore suppressing fires will be more successful, leading to a decrease in the number of steps, fire intensity, burning and burned-out numbers. Consequently, average reward and the suppressant efficiency will improve significantly.

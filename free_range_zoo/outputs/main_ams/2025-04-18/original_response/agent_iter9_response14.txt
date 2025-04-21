@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    
+    num_fires = len(fire_pos)  
+    num_agents = len(other_agents_pos) + 1  # +1 for the current agent
+    capacity_to_extinguish = agent_fire_reduction_power * agent_suppressant_num
+    max_priority = -float('inf')
+    selected_fire = None
+
+    fire_level_temperature = 0.8 
+    dist_temperature = 0.15  
+    suppress_temperature = 0.05  
+
+    for i in range(num_fires):
+        fire_distance = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+        suppression_capacity = min(fire_intensities[i], capacity_to_extinguish)
+        fire_level = fire_levels[i]
+
+        distance_score = np.exp(-dist_temperature * fire_distance) 
+        suppression_score = np.exp(suppress_temperature * suppression_capacity)  
+        level_score = np.exp(fire_level_temperature * fire_level)
+
+        priority = fire_putout_weight[i] * (distance_score + suppression_score + level_score)
+
+        if priority > max_priority:
+            max_priority = priority
+            selected_fire = i
+
+    return selected_fire
+```
+
+The revised policy takes into account a balance between three factors:
+1. The distance to the fire - We want to optimise the agent's travel time and reduce unnecessary travel.
+2. The ability to extinguish the fire - We don't want to send an agent to a fire that it cannot handle.
+3. The intensity of the fire - More intense fires should be dealt with earlier to stop them spreading.
+
+For each factor, we use a separate temperature variable that allows us to balance the importance of each factor in the decision. These values may need adjusting based on performance metrics. We have inicially have reduced the importance of distance to the fire (making the agents more willing to travel longer distances to reach more intense or suppressable fires), and have further decreased suppression capacity weight (which now means an agent's ability to fully handle a fire is less critical than other factors). 
+
+By combining these factors with the given prioritisation weights, the policy determines the most suitable fire for the agent to battle.

@@ -1,0 +1,50 @@
+Based on the results, there seems to be room for improvement in a number of areas:
+- The agents are still not effectively managing the fire situation, as indicated by the "Average Fire Intensity Change" of -0.80.
+- The "Average Burning Number" implies that on average about 4 fires are remaining unhandled. We would like to see this go down.
+- "Average Burnedout Number" suggests that more than half of the fires are burning out without being handled. This is definitely not good.
+- The "Suppressant Efficiency" of 0.9610 intensity/suppressant suggests that still there is room for the efficient usage of suppressants.
+- The agents could take fewer steps to complete the task - currently they are taking an average of 9.7 steps.
+- The "Average Rewards" of 10.8 could be increased.
+
+Taking into account these results, I revising my policy function to further enhance it.
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    max_score = float('-inf')
+    best_fire = None
+    
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        
+        # Change: factor in the fire level in the distance calculation. More intense fires should appear closer.
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (1 + fire_level) / agent_suppressant_num
+
+        # Change: add a factor that accounts for other agents' positions. We want to avoid all agents focusing on the same fire.
+        other_agents_near = sum(1 / ((other_agent[0] - fire_position[0])**2 + (other_agent[1] - fire_position[1])**2 + 0.01)**0.5 for other_agent in other_agents_pos)
+        
+        # Change: account for other agents in the suppressant factor
+        suppressant_factor = (agent_fire_reduction_power / (fire_intensity + other_agents_near)) * agent_suppressant_num
+        
+        score = fire_weight * suppressant_factor - dist * fire_intensity
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+In this revised policy function, I have added a factor in the distance calculation to make the more intense fires appears closer, also accounting for the suppressant amount. This should make agents prioritize more intense fires.
+I've also added a factor to account for the positions of the other agents. This should encourage the agents to spread out across the fire and should reduce the number of "burned out" fires as well bring the "average burning number" down.
+The effect of other agents has also been added to suppressant factor calculation to account for fire already being worked on by other agents, still considering the agent's suppressant left for more efficient usage.
+These modifications should help to improve the efficiency and effectiveness of the wildfire suppression tasks.

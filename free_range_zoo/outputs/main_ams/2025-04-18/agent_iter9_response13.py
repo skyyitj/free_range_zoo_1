@@ -1,0 +1,38 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.1  # Adjusted to put less weight on distance.
+    suppress_power_temperature = 0.8  # Adjusted to increase weight on suppressing power.
+    fire_level_temperature = 0.4  # Adjusted to put significant importance on the fire level.
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with lower weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1e-7)
+
+        # Firefighting efficiency factor with more weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, distance factor, and fire level.
+        score = np.exp((fire_weight * (fire_level+1e-7) / (dist_temperature * dist + 1) + suppression_power * suppress_power_temperature) / fire_level_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire

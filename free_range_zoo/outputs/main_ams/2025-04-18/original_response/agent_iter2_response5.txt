@@ -1,0 +1,42 @@
+Based on the evaluation results, there is still room for improvement in the performance of the agents. The "Average Burning Number" is quite high at 4.2620 much higher than the "Average Putout Number". This indicates that there are many fires that the agents did not handle. This number should ideally be much lower. Moreover, the "Average Fire Intensity Change" is only -0.80. The "Average Suppressant Efficiency" is only at 0.9610 intensity per unit of suppressant. 
+
+Therefore, the policy function should be adjusted to prioritize fires with a higher intensity and carry out the tasks with better suppressant efficiency. Additionally, the agents should be aware of their distance to each fire in order to respond faster and save more fires.
+
+Based on the above analysis, we'll modify the `dist` and `suppressant_factor` variables in the policy function. The `dist` calculation should now include the fire intensity to prioritize fires based on their intensity as more intense fires are typically harder to extinguish. The `suppressant_factor` should take into account the agent's fire reduction power and the fire intensity as well to effectively allocate resources towards more intense fires.
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    # === Fire Task Selection Scoring ===
+    max_score = float('-inf')
+    best_fire = None
+    
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        
+        # Change: added fire intensity in the calculation of dist
+        # This would now consider the intensity of fire while calculating distance
+        dist = (fire_intensity / ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5) / agent_suppressant_num
+
+        # Change: Modified suppressant_factor in the score formula
+        # Include fire_level in the suppressant_factor calculation to target higher intensity and uncontrolled fires
+        suppressant_factor = (agent_fire_reduction_power / (fire_intensity+fire_level)) * agent_suppressant_num
+        score = fire_weight * suppressant_factor - dist * fire_intensity
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+The above policy function should improve the agent's performance in terms of reduce the burning number, more suppressant efficiency and increasing the putout number. The `dist` calculation gives a higher priority to the fires with higher intensity and the `suppressant_factor` calculation increases the importance of fires with higher level and intensity. The result should be a better coordination of the agents towards fire extinguishing tasks.

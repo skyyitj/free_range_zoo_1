@@ -1,0 +1,48 @@
+Given the results and feedback, it seems that the system could benefit from further optimizing the agents' approach to suppressant use.
+
+In particular, we see that the 'Average Suppressant Efficiency' is lower at 0.9610 intensity/suppressant. This may suggest that our individual agents are not using their available suppressant in the most efficient manner. 
+
+Based on the results, the 'Average Fire Intensity Change' is -0.80, which seems quite low. This indicates that the fire-fighting agents may be struggling to effectively mitigate the fires' intensity.
+
+Considering the 'Average Steps' is relatively high at 9.7 steps, the agents perhaps seem to be taking a lot of steps to fight the fires, which may be slowing down the overall process.
+
+Here's a revised version of the policy function that aims to improve the 'Average Steps', 'Average Fire Intensity Change', and 'Average Suppressant Efficiency' metrics:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    # === Fire Task Selection Scoring ===
+    max_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        # Add a factor of (agent_suppressant_num/fire_intensity) in the distance calculation 
+        # to prioritize fires that can be effectively controlled by the agent's suppressant.
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num / fire_intensity)
+        
+        # Modify the scoring formula to improve the agents' efficiency in suppressant usage by 
+        # dividing the fire_weight by the number of agents that are not currently handling any fire.
+        idle_agents = len([pos for pos in other_agents_pos if pos not in set(fire_pos)])
+        if idle_agents == 0: idle_agents = 1  # avoid division by zero
+        score = (fire_weight / idle_agents) - dist
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+The revised policy function includes changes in how the distance and score are calculated. In the distance calculation, it introduces a factor of divided by (agent_suppressant_num / fire_intensity), so that fires that can be effectively handled given the agent's suppressant are considered closer. 
+
+For the score, it modifies to divide the fire_weight by the number of idle agents, which should help to increase the agents' efficiency and effectiveness in suppressant usage. The idleness of agents is assessed by comparing if their positions are not among those already handling fires. These changes should help to improve the associated metrics.

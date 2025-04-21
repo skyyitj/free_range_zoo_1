@@ -1,0 +1,44 @@
+Given the policy evaluation results, it is clear that the agents are struggling to handle the fires efficiently. In particular, the result shows a relatively high average number of fires that are unhandled (Burning Number: 4.2620) and fires that have burned out without being managed (Burnedout Number: 2.8667). These are major performance issues that we need to address. 
+
+We should also aim to improve the Suppressant Efficiency (0.9610 intensity/suppressant) and the average steps taken to finish the task. 
+
+The following policy function is suggested to improve the firefighting efficiency and resource utilization:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor in task selection
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        score = fire_weight * suppression_power / (dist + 1)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+The revised policy function includes adjustments to the distance factor and fire suppression efficiency factor. The updated policy function also has slight changes in the score computation formula to account for the changes. This strategic revision of the policy function should guide the agent more efficiently to tackle high-priority fires, use suppression resources effectively and optimally utilize agent movement.

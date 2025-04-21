@@ -1,0 +1,38 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.1  # Lower weight on distance to encourage spread of agent positions.
+    suppress_power_temperature = 0.01  # Adjusted to put less weight on suppressing power.
+    fire_level_temperature = 0.9  # Increased to encourage quick handling of smaller fires.
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1e-7)
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Adding agent_count to consider the number of agents already handling a fire.
+        agent_count = sum([((fire_position[0]-pos[0])**2 + (fire_position[1]-pos[1])**2)**0.5 < 1.0 for pos in other_agents_pos])
+
+        # Decrease score if too many agents are already handling a fire.
+        score = np.exp((fire_weight * (fire_level+1e-7) / (dist_temperature * dist + 1) + suppression_power * suppress_power_temperature) / fire_level_temperature) / (1 + agent_count)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire

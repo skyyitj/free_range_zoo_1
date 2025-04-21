@@ -1,0 +1,5 @@
+task: PlaceSameColor
+env_name: place_same_color
+description: place blocks into bowl with same color
+goal_description: (1) red block in red bowl (2) green block in green bowl
+max_iterations: 800

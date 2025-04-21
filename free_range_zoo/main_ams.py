@@ -136,7 +136,7 @@ def main(cfg):
                             n=chunk_size
                         )
                     cache[kwargs] = response_cur
-                    total_samples += chunk_size                
+                    total_samples += len(response_cur["choices"])
                     break
                 except Exception as e:
                     if attempt >= cfg.attempt_times:

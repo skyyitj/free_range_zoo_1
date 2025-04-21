@@ -1,0 +1,57 @@
+To accomplish the task of assigning firefighting tasks to agents with an optimal outcome, we'll focus on designing a policy that computes a score for each fire based on the distance from the agent, the fire intensity, and the suppressant resource available to the agent. The fire with the highest score, indicating it should be prioritized, will be selected.
+
+In calculating the score for each fire, a few considerations are taken into account:
+- **Distance to fire**: Prefer fires closer to the agent, as moving to distant fires consumes time that could otherwise be used for suppression. A normalization with an exponential decay can be used to prioritize closer fires more strongly.
+- **Fire intensity**: Higher intensity fires may require immediate attention to prevent spreading. However, overly aggressive fires may be beyond the capacity of a single agent’s efforts to suppress effectively.
+- **Agent's suppressant resource**: Agents with more resources can handle fires with higher intensity, and thus fires are scored higher if the agent’s resources align with the fire's needs.
+- **Task prioritization weights**: Fires with higher weights should be prioritized assuming efficient use of the agent's resources.
+
+Given these considerations, the policy function can be expressed as follows:
+```python
+from typing import Tuple, List
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    # Distance temperature normalization factor
+    distance_temperature = 0.5
+    # Intensity temperature normalization factor
+    intensity_temperature = 5.0
+    # Initialize best score and task index
+    best_score, task_index = float('-inf'), -1
+    
+    # Iterate over each fire task to compute scores
+    for i, (fire_y, fire_x) in enumerate(fire_pos):
+        # Calculate the distance to the fire
+        distance = ((agent_pos[0]-fire_y)**2 + (agent_pos[1]-fire_x)**2)**0.5
+        # Normalize distance and apply exponential decay to prioritize closer fires
+        distance_score = 1.0 / (1.0 + distance ** distance_temperature)
+        
+        # Evaluate the agent's capability against the fire intensity
+        capability_score = agent_fire_reduction_power / (1.0 + fire_intensities[i] ** intensity_temperature)
+        
+        # Assess resource availability
+        resource_score = agent_suppressant_num / (1.0 + fire_levels[i] ** intensity_temperature)
+        
+        # Compute weighted priority of the fire
+        priority_score = fire_putout_weight[i]
+        
+        # Calculate combined score for the task, valuing each aspect
+        score = distance_score * capability_score * resource_score * priority_score
+        
+        # Check if the current score is the best and update task indices accordingly
+        if score > best_score:
+            best_score = score
+            task_index = i
+            
+    return task_index
+```
+
+This function factors in the distance to the fire, the intensity of the fire, the agent's suppressant resource, and the task's priority weights to make an optimal choice on which fire to tackle next. By carefully balancing these considerations, the function aims to support efficient and strategic suppression of fires across the grid.

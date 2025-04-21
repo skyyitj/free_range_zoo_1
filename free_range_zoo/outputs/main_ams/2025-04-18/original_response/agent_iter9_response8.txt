@@ -1,0 +1,49 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    max_score = -float('inf')
+    best_fire = None
+
+    # Reduced distance temperature
+    dist_temperature = 0.1  
+
+    # Increased suppress power_temperature
+    suppress_power_temperature = 0.05  
+
+    # Increased fire_level_temperature
+    fire_level_temperature = 1.0  
+
+    # Iterate over all fire positions
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with lower weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1e-7)
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation
+        score = np.exp((fire_weight * (fire_level+1e-7) / (dist_temperature * dist + 1) + suppression_power * suppress_power_temperature) / fire_level_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+I've decreased the temperature in distance factor to decrease its impact on decision making. This will make agents select fires based more on fire intensity and less on proximity, potentially leading to a more effective distribution of tasks.
+
+I've increased suppress_power_temperature to give higher weight to the agent's suppressing power. This better encourages agents to take on fires they are more capable of suppressing. A better matching of agent abilities with task requirements can significantly improve overall efficiency.
+
+Lastly, the fire level temperature has been increased as well to give much more importance to fire intensity in the decision-making process. In scenarios with multiple fires, this will ensure that the agent focuses on the highest-priority fires, thereby mitigating the most dangerous fires more quickly.

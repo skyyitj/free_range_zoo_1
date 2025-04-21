@@ -1,0 +1,53 @@
+The completion steps are quite high and the extinguished fires (Putout Number) number is lower than desired. Additionally, the burning number is relatively high indicating that a significant number of fires are still active. The suppressant efficiency is a bit low. 
+
+These observations indicate that optimization regarding distance and priority can be made. This can be accomplished by adjusting the weights for different factors and improving the strategic use of resources.
+
+The suppressant efficiency is currently determined by the agent's suppressant and the fire's intensity. It would be beneficial if the policy could also consider the number of fires and the resources required to extinguish them. 
+
+The fire level factor could be adjusted to give more importance to fires with higher intensity levels. 
+
+Also by increasing the temperature of the distances, the agents would preferentially go to the fires closer to them, thus optimizing the route the agents take, and potentially reducing the completion steps. 
+
+The adjusted policy is:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.15  # Increased to prioritize shorter distances
+    suppress_power_temperature = 0.05  # Same as before
+    fire_level_temperature = 0.04  # Increased to prioritize higher intensity fires
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level * fire_level_temperature) / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+Hope this adjusted policy would result in improved performance. It optimizes the priority of fires based on their distance, intensity, and resource allocation.

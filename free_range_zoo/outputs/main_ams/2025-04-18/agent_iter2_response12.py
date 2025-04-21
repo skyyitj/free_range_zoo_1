@@ -1,0 +1,48 @@
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+    
+    fire_putout_weight: List[float]
+) -> int:
+
+    num_tasks = len(fire_pos)
+
+    # Temperature parameters for intensity and distance
+    temperature_intensity = 0.5
+    temperature_distance = 0.5
+
+    # Initialize a placeholder for the maximum score and the associated task.
+    max_score = -np.inf
+    best_fire = None
+
+    for i in range(num_tasks):
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        fire_weight = fire_putout_weight[i]
+
+        # Calculate the Euclidean distance to the fire.
+        dist_to_fire = np.sqrt((fire_pos[i][0] - agent_pos[0])**2 + (fire_pos[i][1] - agent_pos[1])**2)
+
+        f_power = agent_fire_reduction_power
+
+        # Define scoring function considering intensity, distance to fire, suppressant efficiency and fire weight
+        score = fire_weight / (np.exp(fire_intensity/temperature_intensity) + np.exp(dist_to_fire/temperature_distance)) 
+
+        # Prefer fires where the agent has a higher power to suppress and where agent's suppressant is enough
+        if fire_intensity <= f_power and agent_suppressant_num >= fire_level:
+            score *= 2
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire

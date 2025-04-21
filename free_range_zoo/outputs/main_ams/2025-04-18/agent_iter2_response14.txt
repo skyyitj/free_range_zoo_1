@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/experiments/train.py", line 46, in <module>
+    from free_range_zoo.envs.wildfire.baselines import GenerateAgent,StrongestBaseline
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/__init__.py", line 5, in <module>
+    from free_range_zoo.envs.wildfire.baselines.generated_agent import GenerateAgent
+  File "/home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 170
+    suppressant_factor = (agent_fire_reduction_power / if fire_intensity > 1 else fire_intensity * 0.5) * agent_suppressant_num
+                                                       ^^
+SyntaxError: invalid syntax

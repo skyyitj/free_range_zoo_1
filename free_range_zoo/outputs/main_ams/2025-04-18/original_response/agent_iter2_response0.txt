@@ -1,0 +1,34 @@
+Based on the policy feedback and evaluation results, I've observed that the "Average Burning Number" is 4.2620. This suggests that there are too many fires left over on average at the end of each step. Therefore, it's critical to improve the policy function so that agents can be more effective in suppressing fires. 
+
+In the modified policy function, we will prioritize fires with higher intensities, as they cause greater damage and rapidly spread. Additionally, if fires continue burning too long, they become more challenging to extinguish. Lastly, we will consider the level or size of the fire, as larger fires are likely to be more dangerous and result in more damage.
+
+Here is the new version of the policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    # Compute euclidean distance to fires
+    distances_to_fires = [np.sqrt((agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2) 
+                        for i in range(len(fire_pos))]
+
+    # Set priority based on distance, fire intensity and fire level
+    priorities = [(0.4 / distances_to_fires[i]) + (0.3 * fire_intensities[i]) + (0.3 * fire_levels[i])
+                        for i in range(len(fire_pos))]
+
+    # Assign agent to the fire with the highest priority
+    assigned_fire = np.argmax(priorities)
+
+    return assigned_fire
+```
+The revised policy function uses a combination of distance to the fire, fire intensities, and fire levels to assign fires to agents. The distance, intensity, and level are given weights of 0.4, 0.3, and 0.3 respectively to compute the fire's priority. Agents are assigned to the fire with the highest priority. This prioritizes closer, larger, and more intense fires which should help in reducing the "Average Burning Number".

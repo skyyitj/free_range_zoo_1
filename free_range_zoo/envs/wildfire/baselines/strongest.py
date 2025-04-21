@@ -12,7 +12,7 @@ class StrongestBaseline(Agent):
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the agent."""
         super().__init__(*args, **kwargs)
-        print("Generate")
+
         self.actions = torch.zeros((self.parallel_envs, 2), dtype=torch.int32)
 
     def act(self, action_space: free_range_rust.Space) -> List[List[int]]:
@@ -92,7 +92,7 @@ class StrongestBaseline(Agent):
             # print("Chosen Fire: ", maximum_index)
             self.actions[batch, 0] = maximum_index
             self.actions[batch, 1] = 0
-        print("Generate")
+
         self.actions[:, 1].masked_fill_(~has_suppressant, -1)  # Agents that do not have suppressant noop
 
         # print(self.actions)

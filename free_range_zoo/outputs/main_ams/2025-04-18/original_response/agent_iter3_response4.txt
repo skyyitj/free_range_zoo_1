@@ -1,0 +1,55 @@
+Given the policy evaluation results, we see several issues that need to be addressed:
+
+- Burning Number is relatively high, meaning there are many fires left unattended.
+- Putout Number is low, suggesting agents are not putting out fires effectively.
+- The efficiency of suppressant is low, meaning the agent uses the suppressant ineffectively.
+- The average steps taken is high, indicating a slow response time to fight fires.
+   
+Considering these issues, an updated policy function is suggested to help balance supply usage, improve agent coordination, and speed up response times.
+
+The revised policy is as follows:
+
+```python
+from scipy.spatial import distance
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    min_score = float('inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = distance.euclidean(agent_pos, fire_position) / agent_suppressant_num
+
+        # Risk factor calculation considering the fire level and intensity
+        # Here, we modified the risk factor calculation to balance between suppressing high and low intensity fires
+        risk_factor = (fire_level * fire_intensity) / (agent_fire_reduction_power * agent_suppressant_num)
+
+        # Score calculation considering prioritization weight, risk factor, and distance factor
+        score = (fire_weight * dist * risk_factor)
+
+        if score < min_score:
+            min_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this updated policy, we improved the score calculation and introduced a risk factor to put more weight on fires with higher intensity. This should improve the effectiveness of our firefighters in addressing more severe fires while balancing the usage of suppression resources.
+   
+Additionally, we used Euclidean distance instead of the basic distance calculation to better capture the true distance between the agent and the fire, which should help the agent respond more urgently to fires that are physically close.
+
+Finally, we now select the fire with the lowest score rather than the highest score. This is because we've redefined our score to represent the cost, or risk, of each fire, rather than its benefit, so we want to minimize it.

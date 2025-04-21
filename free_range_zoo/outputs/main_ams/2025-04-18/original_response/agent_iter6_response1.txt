@@ -1,0 +1,40 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    max_score = -float('inf')
+    best_fire = None
+    distance_temperature = 0.08  # Adjusted temperature for distance consideration
+    intensity_temperature = 0.06  # Adjusted temperature for fire intensity consideration
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+      
+        # Firefighting efficiency factor
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        # Fire level is directly added to the score, to avoid the fire burning out due to constant high fire level
+        score = np.exp(-dist / distance_temperature) * np.exp(fire_weight * suppression_power / intensity_temperature) + fire_level
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this updated version of the policy, I adjusted some temperature parameters and the calculation of the score. The temperatures for distance and fire intensity have been distinguished, and the dist factor has been modified to consider the remaining suppressant to encourage agent to take appropriate actions when suppressant is running out. Fire intensity weight is now multiplied by the norm of the suppressant efficiency to incentivize agent to suppress high intensity fires.
+The scoring calculation has been revised to account for these differences more accurately. The fire level factor is still added directly to the score to encourage fire suppressions with high level. The rewrite serves to boost the efficiency of suppressant use and help converge to the optimal solution faster.

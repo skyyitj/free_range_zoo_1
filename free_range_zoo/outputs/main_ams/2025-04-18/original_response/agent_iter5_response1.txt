@@ -1,0 +1,46 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    max_score = float('-inf')
+    best_fire = None
+    temperature_suppression = 0.03
+    temperature_distance = 0.05
+    temperature_fire_level = 0.5  
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        distance = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num + 1)
+        
+        # Firefighting efficiency factor in task selection
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+
+        # Fire Level importance factor for task selection
+        fire_level_importance = fire_level / (agent_fire_reduction_power * agent_suppressant_num + 1)
+        
+        # Score calculation considering prioritization weight, firefighting efficiency, distance factor, and fire level
+        score = np.exp(fire_weight * suppression_power / (np.exp(distance / temperature_distance))) * np.exp(fire_level_importance / temperature_fire_level) 
+              
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+We introduce a new variable in the policy: fire_level_importance, which weighs the fire level against the agent's suppression power and available suppressant. This feature enhances the priority given to higher level fires and pressures the agent to tackle them more aggressively.
+
+We handle each divisor of these exponential terms separately with their own temperature variables. Temperature for the fire_level_importance term is set at a higher value (0.5) to maintain a balance and ensure that the fire level does not overwhelmingly dominate the decision process.
+
+This improved policy function aims to tackle the high burned-out number and low fire intensity change observed in the evaluation process, by driving the agent to focus more on critical fires with higher levels and making more effective use of their resources.

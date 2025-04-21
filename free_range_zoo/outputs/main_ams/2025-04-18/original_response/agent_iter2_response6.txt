@@ -1,0 +1,47 @@
+Based on the evaluation metrics, I observed that the "Average Burning Number" is relatively high, indicating that many fires are not being handled efficiently. Therefore, we should revise the fire selection strategy in our policy function.
+
+Also, the "Average Steps" metric is slightly higher than desired, suggesting that the agents could be more efficient in completing their tasks. Hence, we should try to improve the agent's mobility strategy.
+
+Moreover, the "Average Fire Intensity Change" is -0.80, which shows that the agents are not very efficient in reducing the fire intensity. The "Average Suppressant Efficiency" is also low. We should enhance our policy function to improve these metrics as well.
+
+Here is an improved version of the policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    # === Fire Task Selection Scoring ===
+    max_score = float('-inf')
+    best_fire = None
+    
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Adding the number of other agents targeting the same fire in the distance calculation
+        num_other_agents = len([other_agent for other_agent in other_agents_pos if other_agent == fire_position])
+
+        # Consider both the distance to the fire and the number of other agents targeting the same fire
+        dist = (((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 
+                + num_other_agents) / agent_suppressant_num
+
+        # Add a factor of (agent_fire_reduction_power/fire_intensity) in the score calculation to improve 
+        # Suppressant Efficiency and Average Fire Intensity Change
+        suppressant_factor = (agent_fire_reduction_power / fire_intensity) * agent_suppressant_num
+        score = fire_weight * suppressant_factor - dist * fire_intensity
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+The improved policy function introduces a new strategy for fire selection, taking into account the number of other agents targeting the same fire. This will distribute the agents more evenly across different fires, potentially reducing the "Average Burning Number". The change in the distance calculation should also help decrease the "Average Steps" and improve the "Average Fire Intensity Change" and "Average Suppressant Efficiency".

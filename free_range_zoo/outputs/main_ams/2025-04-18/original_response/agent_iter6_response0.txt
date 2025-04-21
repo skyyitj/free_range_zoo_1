@@ -1,0 +1,39 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = -float('inf')
+    best_fire = None
+    temperature_distance = 0.05  # Adjusted temperature parameter to make decision loops more clear
+    temperature_intensity = 0.03  # Adjusted temperature parameter to put more focus on fire intensity
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + fire_level + 1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        score = np.exp(1 / temperature_distance) * np.exp((fire_weight * suppression_power) / temperature_intensity) / (dist + 1)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In this revised policy function, we introduce an additional temperature parameter to separately weight the impact of distance and fire intensity on the decision-making process. The goal is to assign more emphasis to fire intensity and make the strategy more sensitive to fire spread. We use this adjusted policy to further balance the trade-off between immediate fire suppression and resource conservation.

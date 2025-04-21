@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.3  # Update temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.03  # Update temperature coefficient to balance suppression power factor
+    fire_level_temperature = 0.05  # Update temperature coefficient to better balance fire level factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Updated Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / ((agent_suppressant_num+1) * (fire_level+1))
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, distance factor, and adjusted fire level.
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level * fire_level_temperature + np.exp(-fire_intensity)) 
+                            / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+Policy Updates:
+In the new policy, we adjust the temperature coefficients for the distance, suppression power, and fire level factors to ensure each factor is given appropriate weight in the decision making process, in response to the performance metrics.
+
+The changes aim to prioritize fires with higher fire levels, as these pose a larger threat in the environment. The distance calculation has also been updated to factor in the fire level, this ensures that the distance to high-level fires is perceived as shorter, therefore further prioritizing them.
+
+We also introduced an exponential term in the score calculation to increase the importance of reducing the intensity of the fires, aiming to decrease the burned out number and increase the putout number. This should lead to an increase in the average reward, lowering the average steps needed and making suppressant usage more efficient.

@@ -1,0 +1,37 @@
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    
+    # === Fire Task Selection Scoring ===
+    
+    max_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        
+        # Distance weighted by quantity of suppressant remaining
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5
+        suppressant_power = agent_suppressant_num**2 * agent_fire_reduction_power
+                
+        # Add a new factor of fire_level in the score calculation to improve 
+        # the accuracy of fire suppression and avoid letting fires reach self-extinguishing levels
+        score = fire_weight*(np.exp(dist*fire_level)/fire_intensity)*suppressant_power   
+        
+        # Prioritize the fires which are nearer, have higher fire_weight, and which the agent can extinguish 
+        if score > max_score:
+            max_score = score
+            best_fire = i
+            
+    return best_fire

@@ -1,0 +1,48 @@
+/home/liuchi/miniconda3/envs/zymatch/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /pytorch/aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+workspace_dir: /home/liuchi/yitianjiao/aamas2025/free-range-zoo/free_range_zoo/outputs/main_ams/2025-04-18
+test_run: 0 step_counter: 2
+test_run: 1 step_counter: 3
+test_run: 2 step_counter: 2
+test_run: 3 step_counter: 11
+test_run: 4 step_counter: 7
+test_run: 5 step_counter: 3
+test_run: 6 step_counter: 2
+test_run: 7 step_counter: 2
+test_run: 8 step_counter: 18
+test_run: 9 step_counter: 11
+
+Average Evaluate Metrics:
+test_run: 0 step_counter: 8
+test_run: 1 step_counter: 2
+test_run: 2 step_counter: 3
+test_run: 3 step_counter: 17
+test_run: 4 step_counter: 8
+test_run: 5 step_counter: 2
+test_run: 6 step_counter: 5
+test_run: 7 step_counter: 14
+test_run: 8 step_counter: 8
+test_run: 9 step_counter: 17
+
+Average Evaluate Metrics:
+test_run: 0 step_counter: 5
+test_run: 1 step_counter: 6
+test_run: 2 step_counter: 9
+test_run: 3 step_counter: 9
+test_run: 4 step_counter: 6
+test_run: 5 step_counter: 6
+test_run: 6 step_counter: 6
+test_run: 7 step_counter: 9
+test_run: 8 step_counter: 21
+test_run: 9 step_counter: 6
+
+Average Evaluate Metrics:
+  - Average Burning Number: 4.3440
+  - Average Putout Number: 1.4667
+  - Average Burnedout Number: 2.8000
+  - Average Fire Intensity Change: -5.3333
+  - Average Used Suppressant: 12.8000
+  - Average Steps: 7.6000
+  - Average Rewards: 8.8000
+  - Average Fire Intensity Change: -1.06
+  - Average Suppressant Efficiency: 0.9206 intensity/suppressant

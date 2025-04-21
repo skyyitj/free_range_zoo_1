@@ -1,0 +1,46 @@
+Based on the results and metric descriptions, we notice that 
+
+1. The "Used Suppressant" is high which indicates that the agents are not efficiently utilising the available suppressant.
+2. "Average Steps" is also high suggesting that it takes a higher-than-desired number of steps to complete the task.
+3. "Average Fire Intensity Change" is negative and low which suggests that the agents are not able to reduce the intensity of the fires significantly. 
+
+Taking these into account, I propose to introduce a factor in the policy function, `emphasis_factor`, that would give higher priority to fires with higher intensity and to improve suppressant usage. Also, to speed up the task, the agent should stay longer with the same fire until it is low enough.
+
+Here is the modified policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    
+    max_score = float('-inf')
+    best_fire = None
+    
+    # Introduce an emphasis factor to give higher priority to fires which have high intensity 
+    emphasis_factor = 2
+    
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / agent_suppressant_num
+
+        # Modify the suppressant factor to prioritize fires which have high intensity more than distant less intense fires.
+        suppressant_factor = (agent_fire_reduction_power / if fire_intensity > 1 else fire_intensity * 0.5) * agent_suppressant_num
+        score = fire_weight * suppressant_factor * emphasis_factor**fire_intensity - dist * fire_intensity
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+With the proposed changes, if a fire has high intensity, the agent will give it higher priority over near but less intense fires. The agent will also utilize more of its suppressant capacity to reduce high intensity fires. These changes should improve "Used Suppressant", "Average Steps", and "Average Fire Intensity Change".

@@ -1,0 +1,45 @@
+Based on the policy evaluation, the average burning number and burned out number are both high, indicating that fires are often not controlled effectively. Also, the suppressant efficiency is rather low, which suggests that the agent's fire reduction power is not being utilized efficiently.
+
+To improve the performance of the agents, we propose a modification to the policy function. The changes are as follows:
+
+1. Introduce a factor to prioritize fires with higher intensities - this implies that the agent should prioritize fires that are more severe.
+2. Adjust the balance between the distance factor and the firefighting efficiency factor - the agent should also take into account its proximity to a fire when deciding which fire to fight, but not at the cost of handling high-intensity fires.
+3. Add a condition to check for enough suppressant before assigning a fire to an agent - if there isn't enough suppressant, the agent will not be assigned a fire.
+
+Here is the updated policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+
+    max_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        distance_factor = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num + 1)
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity + 1)
+        
+        # Prioritize higher intensity fires
+        intensity_factor = fire_intensity / fire_putout_weight[i]
+        
+        # Adjust the balance between distance factor and suppressant efficiency
+        score = suppression_power / (distance_factor + 0.1 + intensity_factor)
+
+        # Check if enough suppressant is available
+        if agent_suppressant_num >= fire_intensity:
+            if score > max_score:
+                max_score = score
+                best_fire = i
+
+    return best_fire
+```
+By emphasizing on the severity of the fire and efficient utilization of the suppressant, this revised policy function aims to improve the performance of the agent. The meaning of the temperature parameter in the denominator of the score calculation formula is to control the balance between different factors, such as distance and firefighting efficiency.

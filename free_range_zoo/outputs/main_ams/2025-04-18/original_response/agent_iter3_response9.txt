@@ -1,0 +1,48 @@
+Given the policy evaluation results, it is clear that the agents are not handling the fires efficiently. The number of fires that remained unhandled (Burning Number: 4.3745) is too high and the number of  fires successfully extinguished (Putout Number: 1.5667) is too low. Additionally, the fair number of fires are getting burned out without being handled (Burnedout Number: 2.8000), and the Average Steps (6.8667) taken by the agents to finish the task is not at an optimal level. These are significant performance issues that we need to address. 
+
+We also need to improve the Suppressant Efficiency (1.0033 intensity/suppressant) and the Fire Intensity Change (-1.00), which indicates poor firefighting performance.
+
+In order to improve these performance metrics, I propose the following updated policy method:
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # Determine number of fires
+    num_fires = len(fire_pos)
+
+    # Initialize variables
+    best_score = -float('inf')
+    fire_to_handle = 0
+
+    # For each fire, calculate a score considering the fire's intensity, distance to the fire and the amount of suppressant needed to handle it
+    for i in range(num_fires):
+        # Calculate the distance from the agent to the current fire
+        distance = ((agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2) ** 0.5
+
+        # Calculate the amount of suppressant needed to handle the current fire
+        suppressant_needed = fire_intensities[i] / agent_fire_reduction_power
+
+        # Calculate the score for the current fire
+        score = (fire_putout_weight[i] / distance) - suppressant_needed
+
+        # If the calculated score is higher than the current best score, update the current best score and the fire to handle
+        if score > best_score:
+            best_score = score
+            fire_to_handle = i
+
+    # Return the fire to handle
+    return fire_to_handle
+```
+
+The updated policy function will now consider the distance from the agent to the fire and the amount of suppressant needed to handle it, which were not considered before. This should encourage agents to target nearer fires and help improve their resource efficiency. For further enhancement, this policy also includes consideration of the relative intensity of each fire when determining the optimal assignment of resources.

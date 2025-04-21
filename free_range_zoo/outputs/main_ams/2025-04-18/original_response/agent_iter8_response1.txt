@@ -1,0 +1,42 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.05  # Adjust temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.1  # Adjust temperature coefficient to balance suppression power factor
+    fire_level_temperature = 0.02  # Adjust temperature coefficient to balance fire level factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, distance factor, and fire level.
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level * fire_level_temperature) / suppress_power_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+In the revised policy, I've decided to lower the temperature coefficient for the distance factor from 0.1 to 0.05. This will make the agents less concerned about the distances to the fire locations and more likely to choose the tasks that maximize their suppression power and the reward weights. On the other hand, I increased the temperature coefficient for the suppression power factor from 0.05 to 0.1. This will encourage the agents to take into account the firefighting efficiency factor more seriously in their decision-making process. The temperature coefficient for the fire intensity level factor is kept at 0.02, making sure the agents continue to consider fire intensity but not overwhelming other factors.

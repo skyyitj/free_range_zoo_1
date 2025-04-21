@@ -1,0 +1,44 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float],
+) -> int:
+
+    # === Adjusting Scoring Criteria ===
+    max_score = -float('inf')
+    best_fire = None
+
+    dist_temperature = 0.1  # Adjust temperature coefficient to balance distance factor
+    suppress_power_temperature = 0.2  # Adjust temperature coefficient to balance suppression power factor
+    intensity_temperature = 0.3  # Adjust temperature coefficient to balance intensity factor
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance factor with higher weight
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num+1)
+
+        # Firefighting efficiency factor with lower weight
+        suppression_power = agent_fire_reduction_power * agent_suppressant_num / (fire_intensity+1)
+
+        # Intensity factor with medium weight
+        intensity = (fire_level+1) / (fire_intensity+1)
+
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        score = np.exp((fire_weight * suppression_power / (dist_temperature * dist + 1) + fire_level) / suppress_power_temperature) * np.exp(intensity / intensity_temperature)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+In the updated policy, we introduced a new parameter "intensity_temperature" to adjust the weight of "intensity" factor. It is determined based on the ratio of "fire_level" and "fire_intensity". Also, the calculation of the fire suppression score is adjusted to consider the intensity factor, which allows to assign high scores to fires with high intensity. The modifications are expected to make the agents more sensitive to the variation in fire intensity and thus help in reducing the number of unhandled fires and increasing fire putout efficiency.

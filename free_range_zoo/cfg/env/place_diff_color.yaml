@@ -1,0 +1,4 @@
+task: PlaceDiffColor
+env_name: place_diff_color
+description: place blocks into bowl with different color
+max_iterations: 800

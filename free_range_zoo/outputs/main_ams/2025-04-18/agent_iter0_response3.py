@@ -1,0 +1,52 @@
+from typing import List, Tuple
+import numpy as np
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]],
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],
+) -> int:
+    # Define temperature parameters for normalization
+    distance_temp = 0.2
+    intensity_temp = 0.5
+    resource_temp = 0.7
+    level_temp = 0.3
+
+    # Initialize task scores with 0
+    task_scores = [0] * len(fire_pos)
+
+    for i, (fire_y, fire_x) in enumerate(fire_pos):
+        # Calculate distance to fire
+        distance = np.sqrt((agent_pos[0] - fire_y)**2 + (agent_pos[1] - fire_x)**2)
+        distance_score = np.exp(-distance_temp * distance)
+
+        # Fire intensity score
+        intensity_score = np.exp(-intensity_temp * fire_intensities[i])
+
+        # Resources score (the higher the resources left, the higher the score)
+        resource_usage = min(agent_suppressant_num, fire_levels[i] * agent_fire_reduction_power)
+        resource_score = np.exp(resource_temp * resource_usage)
+
+        # Fire level score
+        level_score = np.exp(-level_temp * fire_levels[i])
+
+        # Task priority weight
+        priority_weight = fire_putout_weight[i]
+
+        # Calculate the total score for this task
+        task_scores[i] = distance_score * intensity_score * resource_score * level_score * priority_weight
+
+    # Return the index of the task with the highest score
+    return np.argmax(task_scores)

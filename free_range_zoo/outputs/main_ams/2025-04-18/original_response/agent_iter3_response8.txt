@@ -1,0 +1,47 @@
+Based on the policy evaluation result, we can infer that the agents are not sufficiently controlling the fires and utilizing the available resources, as indicated by the high average number of unhandled fires (Burning Number: 4.3745), fires that have burned out without being managed (Burnedout Number: 2.8000), and the low suppressant efficiency (1.0033 intensity/suppressant). 
+
+Given these results, the next step is to design a revised policy function that better addresses these issues. This function could include changes in how fire tasks are evaluated and selected, as well as the consideration of other agent activities that might interfere with the agent's ability to effectively suppress fires.
+
+Here is a redesigned policy function to better solve the task:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float,
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    max_score = -float("inf")
+    best_fire = None
+
+    for i in range(len(fire_pos)):
+        # Factor in the distance from agent to fire location
+        dist = ((agent_pos[0]-fire_pos[i][0])**2 + (agent_pos[1]-fire_pos[i][1])**2)**0.5
+        distance_factor = 1 / (dist + 1)
+
+        # Factor in the intensity of fire and the agent's fire reduction power
+        expected_suppress = min(agent_fire_reduction_power * agent_suppressant_num, fire_intensities[i])
+        suppress_factor = expected_suppress / (fire_intensities[i] + 1)
+
+        # Factor in the risks of fire spread and the relative priority of different fire tasks
+        risk_factor = fire_levels[i] * fire_putout_weight[i]
+
+        # Calculate the comprehensive score for each task
+        score = distance_factor * suppress_factor * risk_factor
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+
+In this new policy function, the operation of calculating the task score is decomposed into three factors: distance, fire fighting ability and fire risk. The score of each task is the product of these factors. The task with the highest score is chosen as the best task. This policy should increase rewards, control fires more effectively, reduce resource consumption and coordinate agents’ movements better.

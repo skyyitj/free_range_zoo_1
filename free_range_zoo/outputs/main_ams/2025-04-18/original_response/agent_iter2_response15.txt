@@ -1,0 +1,45 @@
+Based on the results and feedback from the simulations, it seems like the task policy is not managing suppressant and fire intensity efficiently.
+
+Concerning observations:
+1. Average Steps: The number of steps taken by the agents seems too high. We should aim to reduce this by assigning tasks more strategically.
+2. Average Fire Intensity Change: The average change in fire intensity per step is too low, which indicates that agents are not able to reduce the fire intensity quickly enough.
+3. Average Suppressant Efficiency: The suppressant use efficiency needs improvement, indicating that agents are not using their available resources to their full potential.
+
+Given these, our objective should be to optimize the policy function to make better use of available suppressants while improving fire suppression efficiency and minimizing the number of steps.
+
+Here is the revised policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int],
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+    highest_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_intensity_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+        # Calculate the distance of the agent from the fire position using Euclidean distance
+        distance = ((agent_pos[0]-fire_position[0])**2 + (agent_pos[1]-fire_position[1])**2)**0.5
+        
+        # Increase the weight for fire that is closer to the agent and has higher intensity
+        # Factor in the available suppressant with the agent fire reduction power to prioritize their actions
+        intensity_factor = ((agent_fire_reduction_power/fire_intensity) * agent_suppressant_num) / distance
+        score = fire_weight * intensity_factor - fire_intensity_level
+
+        # If computed score for a fire is higher than the highest_score, update the highest_score and best_fire
+        if score > highest_score:
+            highest_score = score
+            best_fire = i
+
+    return best_fire
+```
+This policy prioritizes fires based on their weight, the agent's distance from the fire, and the fire's intensity level. It also factors in the available suppressant with the agent's fire reduction power. Overall, this policy should improve the efficiency of suppressant use and decrease the intensity of fires more swiftly.

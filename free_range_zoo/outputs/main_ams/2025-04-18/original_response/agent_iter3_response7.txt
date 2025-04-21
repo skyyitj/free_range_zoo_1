@@ -1,0 +1,45 @@
+Based on the policy evaluation results, one of the major reported issues is the relatively high number of fires that are still uncontrolled and burning (Burning Number: 4.3745) and the fires that burn out without intervention (Burnedout Number: 2.8000). These numbers suggest that agents are struggling to manage the fires effectively.
+
+The performance can be improved by focusing on these two numbers and formulating a revised policy that can choose the fires to handle more effectively.
+
+The following is a revised policy function to enhance the agent's performance:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float, 
+    agent_suppressant_num: float, 
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float], 
+
+    fire_putout_weight: List[float]
+) -> int:
+
+    # === Scoring Fire Tasks ===
+    max_score = float('-inf')
+    best_fire = None
+
+    for i, (fire_position, fire_level, fire_intensity, fire_weight) in enumerate(zip(fire_pos, fire_levels, fire_intensities, fire_putout_weight)):
+
+        # Distance-based factor for task selection
+        dist = ((fire_position[0]-agent_pos[0])**2 + (fire_position[1]-agent_pos[1])**2)**0.5 / (agent_suppressant_num + 1)
+        
+        # Fire intensity and level-based factor for task selection
+        fire_power = fire_intensity * (fire_level / (agent_fire_reduction_power * agent_suppressant_num + 1))
+        
+        # Score calculation considering prioritization weight, firefighting efficiency, and distance factor
+        score = fire_weight * fire_power / (dist + 1)
+
+        if score > max_score:
+            max_score = score
+            best_fire = i
+
+    return best_fire
+```
+The revised policy function introduces a new factor, `fire_power`, which is based on the fire intensity and level and the agent's ability to handle the fire with the available resources. This new factor would lead the agent to prioritize the fires that are more intense and have a higher level and which they can handle based on their reduction power and available suppressant. 
+
+This strategy focused on effective resource utilization and fire handling should lead to a reduction in the number of burning and burned-out fires. The updated policy should help to improve the firefighting performance of the agents.
