@@ -42,6 +42,10 @@ import numpy as np
 import csv
 from datetime import datetime
 
+
+"""
+replace to a 3 envs test.
+"""
 workspace_dir = Path.cwd()
 print('workspace_dir:', workspace_dir)
 with open(os.path.join("/home/liuchi/yitianjiao/aamas2025/free-range-zoo/archive/competition_configs/wildfire/WS1.pkl"), "rb") as file:
@@ -255,22 +259,22 @@ print(f"  - Average Used Suppressant Number: {average_used_suppressant_number:.2
 print(f"  - Average Suppressant Efficiency: {average_suppressant_efficiency:.4f} intensity/suppressant")
 
 # 将结果写入 CSV 文件
-csv_path = "average_results.csv"
+# csv_path = "average_results.csv"
 
-# 检查文件是否存在以及是否为空
-file_exists = os.path.isfile(csv_path)
-file_is_empty = os.path.getsize(csv_path) == 0 if file_exists else True
-keys_list = list(all_metrics.keys()) + ['Average_fire_intensity_change', 'Average_used_suppressant_number', 'Average Suppressant Efficiency']
-values_list = list(all_metrics.values()) + [average_fire_intensity_change, average_used_suppressant_number, average_suppressant_efficiency]
+# # 检查文件是否存在以及是否为空
+# file_exists = os.path.isfile(csv_path)
+# file_is_empty = os.path.getsize(csv_path) == 0 if file_exists else True
+# keys_list = list(all_metrics.keys()) + ['Average_fire_intensity_change', 'Average_used_suppressant_number', 'Average Suppressant Efficiency']
+# values_list = list(all_metrics.values()) + [average_fire_intensity_change, average_used_suppressant_number, average_suppressant_efficiency]
 
-# 将结果写入 CSV 文件
-with open(csv_path, mode='a', newline='') as file:
-    writer = csv.writer(file)
+# # 将结果写入 CSV 文件
+# with open(csv_path, mode='a', newline='') as file:
+#     writer = csv.writer(file)
 
-    if not file_exists or file_is_empty:
-        writer.writerow(keys_list)
+#     if not file_exists or file_is_empty:
+#         writer.writerow(keys_list)
 
-    writer.writerow(values_list)
-env.close()
+#     writer.writerow(values_list)
+# env.close()
 
 

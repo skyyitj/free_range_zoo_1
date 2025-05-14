@@ -292,6 +292,9 @@ def main(cfg):
             # content += code_output_tip
             contents.append(content)
 
+        """
+        save all rewards into a csv file
+        """
         if best_agent:
             logging.info(f"Best agent in iteration {iter} is {best_agent} with score {best_score}")
             best_agent_baseline = os.path.join(baseline_dir, os.path.basename(best_agent))
