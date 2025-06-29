@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import hydra
 import numpy as np
 import json
@@ -22,10 +26,10 @@ FRZ_ROOT = os.getcwd()
 # ISAAC_ROOT_DIR = f"{EUREKA_ROOT_DIR}/../isaacgymenvs/isaacgymenvs"
 import openai
 
-# openai.api_key = "*************************"
+# openai.api_key = "sk-ki8y8VVB6rvJgcvMW8DISEMNDsXF8hP5ptJHF4m0kecNOFGp"
 # openai.api_base = "https://xiaoai.plus/v1"
 openai.api_base = "https://api.lqqq.ltd/v1"
-openai.api_key = "**********************"
+openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
 
 
 
@@ -290,7 +294,8 @@ def main(cfg):
         # print("messages:", messages)
         # iteration_messages = prepare_iteration_messages(best_agent_code, feedback, contents)
         iteration_messages = [{"role": "assistant", "content": best_agent_code}, {"role": "user", "content": best_content}]
-        messages = global_messages + iteration_messages
+        
+        messages = global_messages 
 
 
 if __name__ == "__main__":

@@ -1,0 +1,67 @@
+Given the evaluation results and the metric descriptions provided, we need to refine the policy to improve performance across the board. Let's analyze each metric and adjust relevant parameters and components in the policy function:
+
+1. **Average Rewards**: The current average reward is moderate. This suggests that the agents are somewhat effective yet could optimize their task selection to maximize rewards further.
+2. **Average Fire Intensity Change**: Given as -0.93, indicating a decrease in fire intensity per step but there's room for improvement.
+3. **Average Suppressant Efficiency (0.8404 intensity/suppressant)**: This is quite low, implying inefficient use of suppressant resources.
+4. **Steps, Burning Number, Putout Number, Burnedout Number**: These metrics suggest the efficiency of task completion, number of fires handled, and the conservation of resources, which are not directly provided but implied by other metrics.
+
+Given this, here's a refined policy:
+
+```python
+import numpy as np
+from typing import Tuple, List, float
+
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+
+    # Adjusted parameters
+    distance_weight = 2  # Encourages closer targets, reduced from previous value.
+    intensity_weight = 3  # Places more emphasis on tackling high-intensity fires.
+    reward_weight = 5  # Strong emphasis on higher reward weights.
+    suppressant_weight = 8  # High value to ensure better usage of suppressants.
+
+    # Rebalancing the score to enhance agent performance on crucial metrics
+    for i in range(num_tasks):
+        # Distance score modification
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2)
+        distance_score = np.exp(-distance_weight * distance)
+        
+        # Intensity score modification
+        intensity = fire_intensities[i] * fire_levels[i]
+        intensity_score = np.exp(intensity_weight * intensity)
+        
+        # Reward score modification
+        reward_score = fire_putout_weight[i] ** reward_weight
+        
+        # Suppressant score modification
+        available_suppressant = agent_suppressant_num / max(1, intensity)
+        suppressant_score = np.exp(suppressant_weight * available_suppressant)
+
+        # Calculate score 
+        score = distance_score * intensity_score * reward_score * suppressant_score
+
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+
+### Adjusted Policies:
+- **Distance Weight**: Scaled back to increase the inclusion of closer targets.
+- **Intensity and Reward Weights**: Increased to put greater emphasis on high-intensity fires and rewards.
+- **Suppressant Weight**: Significantly increased to prioritize better management of suppressant resources.
+
+These adjustments aim to better align with achieving a higher reward outcome, improved fire suppression, effective utilization of suppressants, and enhanced overall task performance.

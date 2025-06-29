@@ -1,0 +1,56 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    
+    num_tasks = len(fire_pos)
+    
+    # Temperature parameters for transformations
+    distance_temp = 10.0  # Higher temp makes distance less weighted
+    intensity_temp = 5.0  # Lower temp makes intensity more critical
+    weight_temp = 1.0     # Keeps reward weight relatively unchanged
+
+    # Helper function to calculate Euclidean distance
+    def distance(a_pos, b_pos):
+        return ((a_pos[0] - b_pos[0])**2 + (a_pos[1] - b_pos[1])**2)**0.5
+
+    # Compute scores for each fire task
+    scores = []
+    for i in range(num_tasks):
+        # Calculate distance score (closer fires are preferred)
+        dist = distance(agent_pos, fire_pos[i])
+        distance_score = np.exp(-dist / distance_temp)
+
+        # Calculate fire intensity score (higher intensity fires are prioritized)
+        intensity_score = np.exp(fire_intensities[i] / intensity_temp)
+
+        # Calculate reward weight score (higher weight indicates higher priority)
+        weight_score = fire_putout_weight[i] ** weight_temp
+
+        # Combine scores (additive approach to prioritize critical tasks)
+        score = weight_score + intensity_score - distance_score
+        scores.append(score)
+
+    # Select the task with the highest score
+    return int(np.argmax(scores))
+```

@@ -1,0 +1,73 @@
+Upon examining the provided metrics and analyzing areas for improvement:
+
+1. The fire intensity change is negative, which is good, but -0.95 might indicate that there's room for more aggressive fire suppression.
+2. The suppressant efficiency is slightly over 1, suggesting that while the use of suppressants is moderately effective, there could be room for improvement in using them more effectively or aggressively to handle fires quicker.
+3. The average reward is positive, indicating overall success but perhaps can be increased with more efficient action choices.
+4. The suggested need for possible adjustments to temperature scales or components reinforces the idea of tweaking the balance between distances, effectiveness, importance, and suppression efficiency.
+
+I will enhance the fire suppression policy function to further reflect these needs:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Enhanced temperature constants for better precision
+    distance_temp = 0.8  # We might consider closer fires more aggressively
+    effectiveness_temp = 3.0  # Increase emphasis on effectiveness
+    importance_temp = 3.0  # Higher importance to high priority fires
+    suppressant_eff_temp = 2.0  # Consider suppressant efficiency significantly
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate Euclidean distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+
+        # Calculate the maximum effective suppressant use
+        target_suppressant_use = min(fire_intensity / agent_fire_reduction_power if agent_fire_reduction_power > 0 else float('inf'), agent_supressant_num)
+        
+        # Estimating potential fire intensity reduction
+        potential_effectiveness = agent_fire_reduction_power * target_suppressant_use
+        
+        # Calculate suppressant efficiency
+        if target_supressant_use > 0:
+            suppressant_efficiency = potential_effectiveness / target_suppressant_use
+        else:
+            suppressant_efficiency = 0 
+
+        importance_weight = fire_putout_weight[task_index]
+        
+        # Score calculation based on the specified metrics and temperatures
+        task_score = (
+            -np.log(distance + 1.0) / distance_temp +
+            np.log(potential_effectiveness + 1.0) * effectiveness_temp +
+            np.log(suppressant_efficiency + 1.0) * suppressant_eff_temp +
+            importance_weight * importance_temp
+        )
+        
+        # Select the task with the highest score
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```
+
+This updated policy aims to:
+- Optimize the balance between distance and the effectiveness of firefighting.
+- Increase emphasis on the importance of specific fires to prioritize critical interventions.
+- Make more robust decisions based on a precise evaluation of suppressant efficiency. 
+
+These adjustments should ideally reflect better in the metrics such as greater fire intensity reduction and increased average rewards.

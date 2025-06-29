@@ -1,0 +1,75 @@
+Here’s an example of the `single_agent_policy` function that balances fire suppression efficiency, resource management, and prioritization based on the provided reward weights:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import numpy as np
+
+    # Initialize scores for each fire
+    scores = []
+
+    # Hyperparameters (temperature for score adjustment)
+    distance_temp = 1.0
+    intensity_temp = 1.0
+    weight_temp = 1.0
+
+    # Loop over all fire tasks to calculate a score for each
+    for i in range(len(fire_pos)):
+        # Calculate distance between agent and fire
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2)
+        distance_score = np.exp(-distance / distance_temp)  # Closer fires get higher scores
+
+        # Normalize fire intensity based on fire reduction power and suppressant available
+        suppressable_intensity = min(agent_fire_reduction_power * agent_suppressant_num, fire_intensities[i])
+        intensity_ratio = suppressable_intensity / fire_intensities[i]
+        intensity_score = intensity_ratio ** intensity_temp  # Fires that can be controlled better get higher scores
+
+        # Use fire priority weight to scale the score
+        weight_score = fire_putout_weight[i] ** weight_temp
+
+        # Combine scores for a unified priority score
+        combined_score = distance_score * intensity_score * weight_score
+        scores.append(combined_score)
+
+    # Select the fire task with the highest score
+    best_task_idx = int(np.argmax(scores))
+    return best_task_idx
+``` 
+
+### Explanation of the Policy
+1. **Distance Score**:
+   - Fires closer to the agent are prioritized. We use an exponential decay (`np.exp(-distance / distance_temp)`) to give higher scores to closer fires while still considering far-away fires.
+
+2. **Fire Intensity Score**:
+   - Fires for which the agent can contribute effectively are prioritized. The score is based on the ratio of the agent's suppressible intensity to the fire’s total intensity.
+   - We raise the ratio to the power of a `intensity_temp` parameter to scale its importance. Intensity-heavy fires are still considered if the agent’s capacity is sufficient.
+
+3. **Reward Weight**:
+   - Fires with higher reward weights are prioritized. This is multiplied with the other scores to ensure alignment with the task prioritization.
+
+4. **Combination and Selection**:
+   - The scores are multiplied to combine all factors into a single score for each task.
+   - The fire task with the highest combined score is selected, ensuring a balance between proximity, suppressibility, and task reward weight.
+
+5. **Resource Consideration**:
+   - The policy implicitly factors in suppressant resources in the fire intensity score (`min(agent_fire_reduction_power * agent_suppressant_num, fire_intensities[i])`), ensuring agents do not waste limited resources on fires they cannot control effectively.
+
+### Adjustments and Hyperparameters
+- The temperature parameters (`distance_temp`, `intensity_temp`, `weight_temp`) control the relative importance of each factor. These can be fine-tuned through experiments according to the simulation's behavior.
+
+This implementation aims to provide a balanced decision-making process that considers multiple competing factors to achieve optimal wildfire suppression.

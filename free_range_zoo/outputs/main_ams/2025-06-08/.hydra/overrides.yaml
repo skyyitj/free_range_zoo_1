@@ -1,0 +1,5 @@
+- env=wildfire
+- model=gpt-4-0613
+- sample=4
+- iteration=4
+- load_cache=false

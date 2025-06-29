@@ -1,0 +1,62 @@
+import math
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    num_tasks = len(fire_pos)
+    
+    # Utilize the 'temperature' concept for scaling
+    distance_temperature = 0.1
+    intensity_temperature = 5
+    level_temperature = 0.2
+    weight_temperature = 0.5
+    
+    best_task_index = -1
+    highest_score = -float('inf')
+    
+    # Calculate scores for each fire task, taking into account various factors including agent capability
+    for i in range(num_tasks):
+        fire_y, fire_x = fire_pos[i]
+        fire_level = fire_levels[i]
+        fire_intensity = fire_intensities[i]
+        weight = fire_putout_weight[i]
+
+        # Compute euclidean distance from agent to fire
+        dy = agent_pos[0] - fire_y
+        dx = agent_pos[1] - fire_x
+        distance = math.sqrt(dy**2 + dx**2)
+        
+        # Compare fire intensity to the agent's current suppressant capabilities
+        if agent_suppressant_num > 0 and agent_fire_reduction_power > 0:
+            potential_suppression = agent_suppressant_num * agent_fire_reduction_power
+            remaining_fire_intensity = max(0, fire_intensity - potential_suppression)
+        else:
+            remaining_fire_intensity = fire_intensity
+
+        # Treat remaining intensity as a negative utility; lower remaining means better
+        # fire level should contribute to scoring since higher fire level might be more dangerous
+        score = (math.exp(weight * weight_temperature) / 
+                 (math.exp(distance * distance_temperature) +
+                  math.exp(remaining_fire_intensity * intensity_temperature) +
+                  math.exp(fire_level * level_temperature)))
+        
+        # Select the task that maximizes this 'score'
+        if score > highest_score:
+            highest_score = score
+            best_task_index = i
+
+    return best_task_index

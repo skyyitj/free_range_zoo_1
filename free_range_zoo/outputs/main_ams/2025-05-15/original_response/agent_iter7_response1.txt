@@ -1,0 +1,66 @@
+Given the description of the evaluation metrics and the policy results you've shared, let's analyze the existing issues and potential improvements for the policy function step by step.
+
+### Analysis of the Performance Metrics:
+
+1. **Average Rewards (9.1):** This is reasonable but could likely be improved to ensure that agents maximize reward-focused tasks more effectively.
+2. **Average Fire Intensity Change (-0.93):** Indicates some level of fire mitigation but suggests there might be inefficiencies in targeting or suppressant use. More significant suppression of fire intensity is desired.
+3. **Average Suppressant Efficiency (0.8404 intensity/suppressant):** This efficiency level is decent, indicating that the agents are somewhat good at converting suppressant to intensity reduction, but there may be room to optimize the efficiency further.
+
+### Strategy for Improvement:
+- Focus on optimization of suppressant usage while maintaining or increasing fire mitigation efficiency.
+- Enhance the responsiveness to higher intensity fires, optionally giving even more importance to fires based on their intensity.
+- Increase the weight for fires that are closer and possess higher reward potential to maximize the agent’s tactical impact.
+
+### Enhanced Policy Function:
+Here's the adjusted policy that aims to refine the response toward fire suppression by emphasizing higher intensity and reward-weight fires, while conservatively using suppressants to maintain efficiency.
+
+```python
+import numpy as np
+from typing import Tuple, List
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Policy parameters
+    distance_weight = 1.0
+    intensity_weight = 5.0
+    resource_conservation_weight = 2.0
+    reward_factor = 2.0
+    
+    suppressant_factor = max(agent_suppressant_num, 1)  # avoid division by zero and encourage conservative use
+
+    for i in range(num_tasks):
+        y, x = fire_pos[i]
+        distance = np.sqrt((agent_pos[0] - y)**2 + (agent_pos[1] - x)**2)
+        effective_intensity = fire_levels[i] * fire_intensities[i]
+        potential_reward = fire_putout_weight[i] * reward_factor
+
+        # Composite score considering all factors
+        score = (potential_reward / distance ** distance_weight) * (
+            effective_intensity ** intensity_weight / suppressant_factor ** resource_conservation_weight)
+
+        if score > highest_score:
+            highest_score = score
+            best_task_index = i
+
+    return best_task_index
+```
+
+**Key Adjustments:**
+- **Intensity Weight:** Increased emphasis on addressing higher intensity fires to maximize impact.
+- **Distance Weight:** Maintained as a significant factor to keep agents working on feasible targets.
+- **Suppressant Factor:** Introduce non-linear usage of the suppressant to optimize conservation.
+- **Reward Integration:** Incorporated to ensure agents preferentially consider high-reward fires.
+
+With these enhancements, this policy should better balance the task goals of effective fire suppression with resource management while maximizing accrued rewards.

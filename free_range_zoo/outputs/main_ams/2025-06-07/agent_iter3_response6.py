@@ -1,0 +1,48 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances between the agent and each fire location
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Consider agent suppressant amount in decision making
+    suppressant_importance = agent_suppressant_num / np.sum(fire_levels)
+
+    # Normalize distances so closer fires are more attractive
+    max_distance = np.max(distances) if np.max(distances) else 1  # Avoid division by zero
+    normalized_distances = (1 - (np.array(distances) / max_distance)) * suppressant_importance
+
+    # Evaluate the potential impact of agent's action on each fire
+    potential_impact = (np.array(fire_levels) - agent_fire_reduction_power *
+                        agent_suppressant_num / np.array(fire_intensities))
+    positive_impacts_indexes = potential_impact < 0
+    potential_impact[positive_impacts_indexes] = 0
+
+    # Normalize the potential impact
+    max_impact = np.max(potential_impact) if np.max(potential_impact) else 1
+    normalized_impact = 1 - (potential_impact / max_impact)
+
+    # Temperature parameter to adjust the impact of distances
+    distance_temperature = 1.1
+    # Use temperature-adjusted scores
+    adjusted_distances = np.exp(-distance_temperature * normalized_distances)
+    adjusted_impact = np.exp(normalized_impact)
+    
+    # Calculate combined scores with consideration of task weights
+    scores = adjusted_distances * adjusted_impact * np.array(fire_putout_weight)
+
+    # Selecting the fire with the maximum combined score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index

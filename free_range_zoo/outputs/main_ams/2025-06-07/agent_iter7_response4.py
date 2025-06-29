@@ -1,0 +1,47 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate the distances of the agent to each fire location
+    distances = np.array([
+        np.linalg.norm(np.subtract(agent_pos, f_pos))
+        for f_pos in fire_pos
+    ])
+
+    # Normalize distances to encourage closer engagements, use exponential to shape preference
+    dist_weight_temp = 0.5  # Smaller values prioritize closer distances more sharply
+    distance_weights = np.exp(-dist_weight_temp * distances)
+    
+    # Calculate potential effectiveness: (suppressant amount available * power) / fire intensity
+    potential_effectiveness = agent_suppressant_num * agent_fire_reduction_power / np.array(fire_intensities)
+
+    # Compute the potential new fire levels after suppression
+    predicted_new_fire_levels = np.maximum(np.array(fire_levels) - potential_effectiveness, 0)
+    
+    # Scale effectiveness to prioritize complete extinguishing of fires
+    effectiveness_weights = 1 - (predicted_new_fire_levels / np.array(fire_levels))
+    
+    # Calculate suppression resource efficiency
+    suppressant_efficiency = potential_effectiveness / agent_suppressant_num
+
+    # Combine weights to form a score for each task
+    task_scores = (distance_weights * np.array(fire_putout_weight) * 
+                   effectiveness_weights * suppressant_efficiency)
+    
+    # Normalize the scores to form probabilities
+    score_temperature = 0.2  # Control the sparsity of score distribution
+    score_probabilities = np.exp(score_temperature * task_scores)
+    score_probabilities /= score_probabilities.sum()
+    
+    # Select task based on probability (stochastically select task to allow diversity in choices)
+    selected_task_index = np.random.choice(range(len(fire_pos)), p=score_probabilities)
+
+    return selected_task_index

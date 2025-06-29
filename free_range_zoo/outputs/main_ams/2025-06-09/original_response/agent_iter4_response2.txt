@@ -1,0 +1,72 @@
+Based on the evaluation metrics and results provided, it seems:
+
+1. The average rewards are positive, indicating some effectiveness in the agents' actions.
+2. The average fire intensity change is negative, suggesting the agents are successfully reducing fire intensities on average.
+3. The suppressant efficiency is close to 1, which means the agents are effectively using their suppressants in comparison to the decrease in fire intensity.
+
+However, there are no details on other metrics such as the average number of fires extinguished, burned out, or the suppressant used, which are also critical for evaluation. Based on the provided metrics and feedback:
+
+- To improve the application of suppressant, the policy function may need to consider balancing suppressant usage to improve efficiency further and avoid depletion in critical situations.
+- Enhance the consideration of task urgency (fires that might propagate more aggressively) versus just the closest fires or highest weighted fires.
+
+Let's tweak the policy focusing on:
+- Adjusting the prioritization weight handling.
+- Improving suppressant usage decisions.
+
+Here's an updated version of the policy function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Adjustments on temperature parameters
+    distance_temp = 2.0
+    effectiveness_temp = 1.5  # Encouraging suppression effectiveness
+    importance_temp = 1.0  # Weighting the importance
+    
+    urgency_temp = 2.0  # To prioritize urgent fires which are burning fiercely or close to important assets
+    
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculating Euclidean distance to the fire
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+       
+        # Evaluating suppressant usage, focusing on not running out immediately
+        possible_suppressant_use = min(agent_supressant_num, fire_intensity / agent_fire_reduction_power)
+        
+        # Evaluate potential effectiveness
+        potential_effectiveness = agent_fire_reduction_power * possible_suppressant_use
+        
+        urgency = fire_intensity / (distance + 1)  # Fires with high intensity and closer should be more urgent
+        
+        importance_weight = fire_putout_weight[task_index]
+       
+        # Recalculated task score incorporating urgency and improved effectiveness consideration
+        task_score = (
+            -np.log(distance + 1) / distance_temp +
+            np.log(potential_effectiveness + 1) * effectiveness_temp +
+            importance_weight * importance_temp + 
+            np.log(urgency + 1) * urgency_temp
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```
+In this revised policy, I added urgency into the scoring to handle dynamic situations and adjusted the temperature parameter for effectiveness to push the policy towards a more efficient suppressant use.

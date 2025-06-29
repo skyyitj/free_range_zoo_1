@@ -1,0 +1,51 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Adjust temperature tuning based on feedback
+    distance_temp = 2.0    # Increasing sensitivity towards the distance impact
+    effectiveness_temp = 1.0  # Encouraging efficiency of suppressant use
+    importance_temp = 1.0  # Balancing fire importance with other factors
+    
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate the Euclidean distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+        # Heuristic to decide on suppressant usage might be improved to consider remaining tasks
+        possible_suppressant_use = min(agent_supressant_num, fire_intensity / agent_fire_reduction_power)
+        if possible_suppressant_use < 1:
+            # Skip insufficient suppression power scenarios
+            continue
+        
+        potential_effectiveness = agent_fire_reduction_power * possible_suppressant_use
+        
+        importance_weight = fire_putout_weight[task_index]
+
+        # Recalculate the task score with adjusted weights and temperatures
+        task_score = (
+            -np.log(distance + 1) / distance_temp +  # More importance to closer fires
+            np.log(potential_effectiveness + 1) * importance_temp +  # Higher effect for actual suppressive capacity
+            importance_weight * 5.0 # Strongly consider fire importance weights in decision
+        )
+        
+        # Choose the task with the highest score
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```

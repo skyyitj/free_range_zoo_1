@@ -1,0 +1,54 @@
+import numpy as np
+
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    num_tasks = len(fire_pos)
+    
+    best_fire_index = -1
+    best_score = float('-inf')
+    
+    # Parameters to control the effect of different terms in the decision making
+    distance_temperature = 0.1               # Sensitivity of distance impact
+    intensity_temperature = 1                # Sensitivity of fire intensity impact
+    available_suppressant_scaler = 1.0       # Importance of suppressant amount available
+    reward_weight_scaler = 1.0               # Ratios of reward impact
+    
+    for i in range(num_tasks):
+        # Calculate the distance to the fire
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        
+        # Check if the agent has enough suppressants to actually reduce this fire
+        fire_intensity = fire_intensities[i]
+        
+        # Define the score as a function of several factors:
+        # - negative distance (we prefer closer fires)
+        # - fire intensity (we want to extinguish high-intensity fires)
+        # - remaining suppressant (focus on fires we can effectively combat)
+        # - reward weights (higher weighted fires are prioritized)
+        
+        # Accounts to keep agent from using more suppressant than available
+        effective_suppressant_use = min(fire_intensity, agent_suppressant_num * agent_fire_reduction_power)
+        
+        # Score calculation
+        score = (
+            -np.exp(distance * distance_temperature) +  # Penalizes distance
+            np.exp(fire_intensity * intensity_temperature) +  # Prioritizes higher intensity fires
+            effective_suppressant_use * available_suppressant_scaler +  # Scales with available effective suppressant use
+            fire_putout_weight[i] * reward_weight_scaler  # Fire-specific reward weight
+        )
+        
+        # Choosing the task with the maximum score
+        if score > best_score:
+            best_score = score
+            best_fire_index = i
+    
+    # Return index of fire task with the highest score
+    return best_fire_index

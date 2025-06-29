@@ -1,0 +1,59 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances of the agent to each fire
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances to prioritize nearby fires
+    normalized_distances = 1 / (np.array(distances) + 0.001)  # Add a small value to avoid division by zero
+
+    # Improved Use of Suppressant
+    # Prevent total suppressant use from exceeding available amount
+    max_suppressant_use = min(agent_suppressant_num, np.sum(fire_intensities) / agent_fire_reduction_power)
+
+    # Calculate potential suppressant effect on each fire
+    suppressant_per_fire = max_suppressant_use / len(fire_pos)
+    potential_fire_reductions = suppressant_per_fire * agent_fire_reduction_power / np.array(fire_intensities)
+    
+    # Compute new potential fire levels after suppression
+    new_fire_levels = np.array(fire_levels) - potential_fire_reductions
+
+    # Normalize the new fire levels; goal is to prioritize fires that can be significantly reduced or put out
+    normalized_new_fire_levels = 1 - (new_fire_levels.clip(min=0) / np.array(fire_levels))
+
+    # Calculate how desperate a fire needs to be addressed based on current intensity
+    fire_desperation = np.array(fire_levels) / np.max(fire_levels)
+    
+    # Calculate reward efficiency (reward per suppressant used)
+    reward_efficiency = (np.array(fire_putout_weight) * normalized_new_fire_levels) / suppressant_per_fire
+
+    # Combine all scores to determine which fire to target
+    # Supplement: Incorporate distance, new fire level effectiveness, and reward efficiency
+    scores = normalized_distances * reward_efficiency
+    
+    # Selection of the fire task with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index
+```
+
+In the revised policy, the function considers:
+- How close the fires are.
+- The amount of suppressant each fire would need relative to the reward it offers.
+- Prioritize fires based on the potential reduction in fire level.
+- Calculate a composite score based on distance and reward efficiency.
+
+This strategic balance should optimize reward efficiency, suppressant use, and effectively manage fire intensities, aiming to improve the performance metrics discussed.

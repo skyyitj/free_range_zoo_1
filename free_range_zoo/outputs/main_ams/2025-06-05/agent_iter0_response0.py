@@ -1,0 +1,102 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        Agent Properties:
+            agent_pos: (y, x) coordinates of the agent
+            agent_fire_reduction_power: Fire suppression capability
+            agent_suppressant_num: Available suppressant resources
+
+        Team Information:
+            other_agents_pos: List of (y, x) positions for all other agents
+                            Shape: (num_agents-1, 2)
+
+        Fire Information:
+            fire_pos: List of (y, x) coordinates for all fires
+                     Shape: (num_tasks, 2)
+            fire_levels: Current fire intensity at each location
+                        Shape: (num_tasks,)
+            fire_intensities: Base difficulty of extinguishing each fire
+                            Shape: (num_tasks,)
+
+        Task Weights:
+            fire_putout_weight: Priority weights for task selection
+                               Shape: (num_tasks,)
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    
+    import numpy as np
+
+    # Hyperparameters for normalization
+    intensity_temp = 10.0           # Temperature for intensity-based score transformation
+    proximity_temp = 5.0            # Temperature for proximity-based score transformation
+    reward_temp = 1.0               # Temperature for reward weight transformation
+    
+    # Get the number of tasks
+    num_tasks = len(fire_pos)
+    
+    # Initialize a list for scores
+    scores = []
+    
+    # Iterate over fire tasks and compute a score for each
+    for i in range(num_tasks):
+        # Extract fire task properties
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        fire_priority = fire_putout_weight[i]
+        fire_coord = fire_pos[i]
+        
+        # Compute proximity score (closer distance gets a higher score)
+        distance = np.sqrt((agent_pos[0] - fire_coord[0])**2 + (agent_pos[1] - fire_coord[1])**2)
+        proximity_score = np.exp(-distance / proximity_temp)  # Exponential decay based on distance
+        
+        # Compute intensity score (higher intensity gets a higher score)
+        intensity_score = 1 - np.exp(-fire_intensity / intensity_temp)  # Higher intensity contributes more
+        
+        # Compute reward weight score (prioritize based on task weight)
+        reward_score = np.exp(fire_priority / reward_temp)  # Transform reward weights
+        
+        # Compute suppressant applicability score (agents should prioritize fire suppression they can handle)
+        if agent_suppressant_num > 0:
+            potential_reduction = agent_suppressant_num * agent_fire_reduction_power
+            applicability_score = min(potential_reduction, fire_intensity) / fire_intensity  # Fraction of fire intensity reducible
+        else:
+            applicability_score = 0  # No resource left to contribute
+
+        # Combine all scores into a weighted score
+        combined_score = (proximity_score + intensity_score + reward_score + applicability_score) * fire_priority 
+        
+        # Avoid assigning tasks where fire level exceeds threshold (use a penalty)
+        fire_penalty = 0.0
+        if fire_level > 5: # Example threshold
+            fire_penalty = -100.0
+        
+        # Final score after applying penalty
+        final_score = combined_score + fire_penalty
+        
+        # Append score to the list
+        scores.append(final_score)
+
+    # Select the task with the highest score
+    best_task_index = np.argmax(scores)
+    
+    return best_task_index

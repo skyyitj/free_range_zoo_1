@@ -1,5 +1,5 @@
 # Task
-Design policy functions for a grid wildfire simulation system.
+Design a policy function for a grid wildfire simulation system.
 
 # Objective
 Create a policy function that optimally assigns firefighting tasks to agents for rapid fire suppression.

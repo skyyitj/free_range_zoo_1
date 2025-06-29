@@ -1,0 +1,104 @@
+Here's the implementation of the `single_agent_policy` function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        Agent Properties:
+            agent_pos: (y, x) coordinates of the agent
+            agent_fire_reduction_power: Fire suppression capability
+            agent_suppressant_num: Available suppressant resources
+
+        Team Information:
+            other_agents_pos: List of (y, x) positions for all other agents
+                            Shape: (num_agents-1, 2)
+
+        Fire Information:
+            fire_pos: List of (y, x) coordinates for all fires
+                     Shape: (num_tasks, 2)
+            fire_levels: Current fire intensity at each location
+                        Shape: (num_tasks,)
+            fire_intensities: Base difficulty of extinguishing each fire
+                            Shape: (num_tasks,)
+
+        Task Weights:
+            fire_putout_weight: Priority weights for task selection
+                               Shape: (num_tasks,)
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    
+    import numpy as np
+
+    # Temperature parameters for normalization
+    distance_temperature = 1.0
+    intensity_temperature = 1.5
+    suppression_temperature = 2.0
+
+    # Initialize variables
+    best_task_index = -1
+    best_task_score = -float('inf')
+
+    # Iterate over all fire tasks
+    for i in range(len(fire_pos)):
+        # Extract fire position and its properties
+        fire_y, fire_x = fire_pos[i]
+        fire_level = fire_levels[i]
+        fire_intensity = fire_intensities[i]
+        priority_weight = fire_putout_weight[i]
+        
+        # Compute distance from agent to fire
+        agent_y, agent_x = agent_pos
+        distance = np.sqrt((agent_y - fire_y)**2 + (agent_x - fire_x)**2)
+
+        # Calculate effectiveness of agent's suppressant at this fire location
+        remaining_fire = fire_intensity - (agent_fire_reduction_power * agent_suppressant_num)
+        suppression_effectiveness = max(0, fire_intensity - remaining_fire)
+
+        # Normalize score components
+        normalized_distance = np.exp(-distance / distance_temperature)
+        normalized_intensity = np.exp(-fire_intensity / intensity_temperature)
+        normalized_suppression = np.exp(suppression_effectiveness / suppression_temperature)
+
+        # Combine weighted components for scoring
+        task_score = (
+            priority_weight * normalized_intensity
+            + normalized_suppression
+            - normalized_distance
+        )
+
+        # Update best task if the score is higher
+        if task_score > best_task_score:
+            best_task_score = task_score
+            best_task_index = i
+
+    return best_task_index
+``` 
+
+### Key Logic:
+1. **Distance Factor:** Fires closer to the agent are preferred, using exponential decay for distance effect.
+2. **Fire Intensity:** Fires with lower intensity are penalized to prioritize critical fires.
+3. **Suppression Effectiveness:** Tasks where the agent's suppressant is more effective are scored higher.
+4. **Priority Weight:** Rewards guide agents to prioritize fires based on their importance.
+
+### Temperature Parameters:
+These adjust the sensitivity of normalized components. By tuning them, you can emphasize specific aspects, like distance or fire intensity, in the decision-making process.

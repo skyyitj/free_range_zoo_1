@@ -1,0 +1,59 @@
+Based on the evaluation results, let's consider possible adjustments to improve the policy:
+
+1. **Average Fire Intensity Change**: The negative value of -0.84 is good as it indicates a reduction in fire intensity. However, to further enhance the effectiveness, the policy could place a greater emphasis on tasks involving higher fire levels.
+
+2. **Used Suppressant**: Although not directly reported, its efficiency is closely related to "Suppressant Efficiency". High suppressant efficiency is good, but we would want both high efficiency and minimal usage.
+
+3. **Steps, Putout Number, and Burning Number**: These weren't explicitly reported in the latest results. Too many steps could imply inefficiency, and too many burning or unhandled fires could imply misprioritization.
+
+To address the above points, the revised policy could:
+- Further increase the penalty for distance to discourage wasting resources on far-away fires unless strictly necessary.
+- Place even greater emphasis on fire levels, especially if they approach a critical threshold.
+- Consider a ratio of intensity reduction to suppressant cost to optimize resource use.
+
+Revised policy implementation:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+
+    # Hyperparameters tweaked for balance
+    distance_temperature = 0.01  # Increased the impact of distance
+    intensity_temperature = 0.015  # Moderate sensitivity towards fire intensity
+    suppressant_conserve_factor = 25.0  # Strong encouragement for suppressant conservation
+    reward_scale = 2.0  # Highlighting reward significance
+
+    remaining_suppressant = np.exp(-suppressant_conserve_factor * (1 - (agent_suppressant_num / 10)))
+
+    for i in range(num_tasks):
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        norm_distance = np.exp(-distance_temperature * distance)
+
+        intensity = fire_intensities[i] * fire_levels[i]
+        norm_intensity = np.exp(-intensity_temperature * intensity)
+
+        score = reward_scale * fire_putout_weight[i] * (norm_distance * agent_fire_reduction_power / (1 + intensity)) * np.log1p(fire_levels[i]) * remaining_suppressant * norm_intensity
+
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+
+### Further Considerations:
+- The increased `distance_temperature` will make agents more sensitive to distance, ensuring nearby fires are prioritized unless distant fires have significantly higher weights.
+- Enhanced `intensity_temperature` and `suppressant_conserve_factor` will motivate effective firefighting while conserving resources, benefiting both efficiency and sustainability in fire suppression efforts.
+
+This revision aims to adapt policy factors to a more performance-driving model, optimizing fire control while maximizing operational efficiency and resource usage.

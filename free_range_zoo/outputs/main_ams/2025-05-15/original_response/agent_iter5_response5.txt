@@ -1,0 +1,61 @@
+After analyzing the performance metrics, it seems that suppression efficiency is high but the average reward is low, which may indicate that the suppressant is being used on fires that are not high-priority, resulting in a lower total reward. 
+
+Let's reflect on the performance metrics and potential policy adjustments:
+
+- **Rewards**: Considering the fact that suppression efficiency is high but average reward is low, we need to use our suppressant resources more smartly. We should focus on fires with the highest reward weights.
+
+- **Fire Intensity Change**: The average change in fire intensity per step is negative, which shows that our agents are effectively reducing the fire, however, the magnitude is still very small, indicating we may need to take up more aggressive actions to put out the fire.
+
+- **Suppressant Efficiency**: This means that more intensity reduction per amount of suppressant used which shows that our agents are using their resources efficiently to control the fire. 
+
+- **Burning Number**: The fires that are still burning need to be reduced. Prioritizing based on reward weights should help in this.
+
+- **Putout Number / Burnedout Number**: These numbers should be handled closely. Making the agents more aggressively fighting with fires should increase the Putout Number and decrease the Burnedout Number.
+
+To address these, we'll adjust the parameters to emphasize a more aggressive approach to firefighting and a reduced focus on conservation:
+
+```python
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+
+    # Parameter for policy tuning
+    distance_temperature = 0.005  
+    intensity_temperature = 0.001  # increase intensity temperature to prioritize more severe fires
+    suppressant_conserve_factor = 12.0  # decrease this to use more suppressant
+
+    remaining_suppressant = np.exp(-suppressant_conserve_factor * (1 - (agent_suppressant_num / 10)))
+
+    for i in range(num_tasks):
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        norm_distance = np.exp(-distance_temperature * distance)
+
+        intensity = fire_intensities[i] * fire_levels[i]
+        norm_intensity = np.exp(-intensity_temperature * intensity)
+
+        # Fine-tune score to balance fire control and resource management
+        score = fire_putout_weight[i] * (norm_distance * agent_fire_reduction_power / (1 + intensity)) * np.log1p(fire_levels[i]) * remaining_suppressant * norm_intensity
+
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+Explanation: 
+- **Intensity Temperature**: Increase this to prioritize more severe fires.
+- **Suppressant Conservation Factor**: Decrease this to allow more aggressive consumption of suppressant. 
+
+This policy function should favor higher-reward tasks by being more aggressive in fire suppression. It should lead to higher overall rewards at the tradeoff of a smaller quantity of remaining suppressant at the end.

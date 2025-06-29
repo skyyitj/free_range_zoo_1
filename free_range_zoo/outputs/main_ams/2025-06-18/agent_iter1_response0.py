@@ -1,0 +1,51 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import numpy as np  # For normalization and mathematical functions
+
+    # Temperature parameters for score component scaling
+    intensity_temperature = 1.0
+    distance_temperature = 1.0
+    reward_temperature = 1.0
+
+    # Compute available suppressant impact
+    max_effective_reduction = agent_fire_reduction_power * agent_suppressant_num
+
+    # Initialize scores list
+    scores = []
+
+    # Iterate over all fire tasks
+    for i in range(len(fire_pos)):
+        # Compute remaining fire intensity if the agent were to engage
+        remaining_fire_intensity = max(0, fire_intensities[i] - max_effective_reduction)
+
+        # Distance calculation (Euclidean distance between agent and fire location)
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+
+        # Score components transformation
+        transformed_intensity = np.exp(-remaining_fire_intensity / intensity_temperature)
+        transformed_distance = np.exp(-distance / distance_temperature)
+        transformed_reward = np.exp(fire_putout_weight[i] / reward_temperature)
+
+        # Combine components into a single score
+        score = transformed_reward * transformed_distance * transformed_intensity
+        scores.append(score)
+
+    # Select the task with the highest score
+    best_task_index = np.argmax(scores)
+    
+    return best_task_index

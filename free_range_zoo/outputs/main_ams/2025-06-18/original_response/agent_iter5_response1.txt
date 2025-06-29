@@ -1,0 +1,100 @@
+Here's the implementation of your policy function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    # Define temperature parameters for controlling impact of each component
+    distance_temp = 1.0
+    fire_intensity_temp = 1.0
+    suppressant_efficiency_temp = 1.0
+    reward_weight_temp = 1.0
+
+    # Extract number of fire tasks
+    num_tasks = len(fire_pos)
+
+    # Function to calculate Euclidean distance
+    def calculate_distance(pos1, pos2):
+        return np.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+
+    # Calculate scores for each fire task
+    scores = []
+    for i in range(num_tasks):
+        # Calculate normalized distance (closer tasks preferred)
+        distance = calculate_distance(agent_pos, fire_pos[i])
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Normalize fire intensity (higher intensity fires prioritized)
+        intensity_score = np.exp(fire_intensities[i] / fire_intensity_temp)
+
+        # Calculate suppressant efficiency (ability to extinguish the fire)
+        suppressant_efficiency = min(
+            agent_fire_reduction_power * agent_suppressant_num, fire_intensities[i]
+        )
+        suppressant_efficiency_score = np.exp(
+            suppressant_efficiency / suppressant_efficiency_temp
+        )
+
+        # Incorporate task reward weight
+        reward_score = np.exp(fire_putout_weight[i] / reward_weight_temp)
+
+        # Combine scores into a single value for prioritization
+        score = (
+            distance_score * intensity_score * suppressant_efficiency_score * reward_score
+        )
+        scores.append(score)
+
+    # Select the task with the highest score
+    best_task_index = int(np.argmax(scores))
+
+    return best_task_index
+```
+
+### Explanation:
+1. **Distance Metric**:
+   - The closer the fire is to the agent, the higher the priority (inversely proportional to distance).
+
+2. **Fire Intensity**:
+   - Fires with higher intensity are given more priority. These are the fires that are more challenging to handle and could potentially spread more.
+
+3. **Suppressant Efficiency**:
+   - This calculates how efficiently an agent can extinguish a fire, considering the agent's current resources and fire reduction power.
+
+4. **Reward Weight**:
+   - The priority weight associated with each fire is used to guide the decision-making process. Fires with higher weights contribute more significantly to the score.
+
+5. **Temperature Parameters**:
+   - These parameters (`distance_temp`, `fire_intensity_temp`, `suppressant_efficiency_temp`, and `reward_weight_temp`) help normalize and scale the impact of the individual components.
+
+6. **Score Calculation**:
+   - All components (distance, intensity, suppressant efficiency, and reward weight) are combined by multiplication to form a final score for each fire task.
+
+7. **Task Assignment**:
+   - The fire task with the maximum score is selected for the agent.
+
+### Why This Approach Works:
+- This policy explicitly balances between **proximity**, **fire intensity**, **agent suppressant capacities**, and **reward weight priorities**.
+- Multiplicative combination ensures a holistic view where all components play a role in decision-making.
+- The use of exponential functions helps normalize and amplify the impact of score components, while adjustable temperature parameters allow for fine-tuning.

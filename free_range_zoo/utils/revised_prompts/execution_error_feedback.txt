@@ -1,1 +1,1 @@
-Executing the functions code above has the following error: {traceback_msg}. Please fix the bug and provide  new, improved act and observe functions!
+Executing the functions code above has the following error: {traceback_msg}. Please fix the bug and provide new improved policy functions!

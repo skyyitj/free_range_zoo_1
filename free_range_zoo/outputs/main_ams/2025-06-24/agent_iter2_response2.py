@@ -1,0 +1,60 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+
+    # Temperature parameters for normalized scoring
+    proximity_temp = 10.0  # Controls sensitivity to distance
+    intensity_temp = 5.0   # Controls sensitivity to fire intensity
+    weight_temp = 2.0      # Controls sensitivity to task prioritization
+
+    # Compute scores for all tasks
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    for i in range(num_tasks):
+        # Calculate Euclidean distance between agent and fire location
+        fire_distance = ((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)**0.5
+
+        # Score components
+        normalized_proximity = np.exp(-fire_distance / proximity_temp)  # Higher score for closer fires
+        normalized_intensity = np.exp(fire_intensities[i] / intensity_temp)  # Prioritize higher intensity fires
+        normalized_weight = np.exp(fire_putout_weight[i] / weight_temp)  # Guide task selection by priority weights
+
+        # Resource consideration: if suppressant is insufficient, reduce score
+        required_suppressant = fire_intensities[i] / agent_fire_reduction_power
+        if agent_suppressant_num < required_suppressant:
+            resource_penalty = 0.5  # Reduce score if suppressant is insufficient
+        else:
+            resource_penalty = 1.0
+
+        # Combine normalized scores and apply resource penalty
+        task_score = (
+            normalized_proximity 
+            * normalized_intensity 
+            * normalized_weight 
+            * resource_penalty
+        )
+        task_scores.append(task_score)
+    
+    # Select the task with the highest score
+    return int(np.argmax(task_scores))

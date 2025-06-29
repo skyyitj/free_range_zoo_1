@@ -1,0 +1,67 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    # Temperature parameters for transformation of components
+    distance_temperature = 10
+    intensity_temperature = 5
+    reward_temperature = 3
+    
+    # Extract number of tasks
+    num_tasks = len(fire_pos)
+
+    # Initialize list to store scores
+    task_scores = []
+
+    # Iterate over all fire tasks
+    for i in range(num_tasks):
+        # Calculate Euclidean distance from agent to fire
+        agent_y, agent_x = agent_pos
+        fire_y, fire_x = fire_pos[i]
+        distance = np.sqrt((agent_y - fire_y)**2 + (agent_x - fire_x)**2)
+        
+        # Transform distance (lower distance is better, higher score)
+        transformed_distance = np.exp(-distance / distance_temperature)
+
+        # Transform fire intensity (higher intensity is better, higher score)
+        fire_intensity = fire_intensities[i]
+        transformed_intensity = np.exp(fire_intensity / intensity_temperature)
+
+        # Transform reward weight (higher weight means higher priority, higher score)
+        reward_weight = fire_putout_weight[i]
+        transformed_reward = np.exp(reward_weight / reward_temperature)
+
+        # Combine all scores (weighted sum or simple multiplication)
+        # Multiply scores to aggregate them into a single meaningful score
+        score = transformed_distance * transformed_intensity * transformed_reward
+        
+        # Append score for this task
+        task_scores.append(score)
+
+    # Choose the task with the highest score
+    best_task_index = int(np.argmax(task_scores))
+
+    return best_task_index
+```

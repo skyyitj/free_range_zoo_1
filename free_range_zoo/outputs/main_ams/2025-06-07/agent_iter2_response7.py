@@ -1,0 +1,38 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Heat map proximity calculation. Closer fires are more critical
+    distances = np.array([
+        np.sqrt((fire_y - agent_pos[0])**2 + (fire_x - agent_pos[1])**2)
+        for fire_y, fire_x in fire_pos
+    ])
+    # Normalize distances with a temperature term; low distance should mean highly prioritized
+    normalized_distances = np.exp(-distances / 10.0)  # Using temp 10 here to adjust sensitivity
+
+    # Calculation of suppression capacity and efficiency factors
+    # Fire reduction capability and adjust it with the agent's suppression ability
+    potential_impact = agent_fire_reduction_power * agent_supressant_num
+    fire_impact_scores = np.array([
+        min(potential_impact / (1 + intensity), 1.0)  # Normalizing the impact score
+        for intensity in fire_intensities
+    ])
+    
+    # Enhanced weighting for task prioritization, considering urgency (fire level and intensity)
+    weighted_importance = (np.array(fire_levels) * np.array(fire_putout_weight)) ** 2  # Square to emphasize priority
+
+    # Evaluate the optimal task based on multiple criteria factored together
+    overall_scores = normalized_distances * weighted_importance * fire_impact_scores
+
+    # Pick the fire task with the highest overall score
+    selected_task_index = np.argmax(overall_scores)
+    
+    return selected_task_index

@@ -1,0 +1,45 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances of the agent to each fire
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances to prioritize nearby fires
+    normalized_distances = 1 / (np.array(distances) + 0.001)  # Add a small value to avoid division by zero
+
+    # Increase the importance of fire putout weight by scaling it up
+    adjusted_fire_putout_weight = np.exp(0.5 * np.array(fire_putout_weight))
+
+    # Calculate potential suppressant effect on each fire
+    potential_fire_reductions = agent_supressant_num * agent_fire_reduction_power / np.array(fire_intensities)
+
+    # Compute how effectively suppressant can reduce the fire intensity
+    predicted_fire_intensity = np.array(fire_levels) - potential_fire_reductions
+    
+    # Normalize the predicted intensity change; we reward it more if more reduction is possible
+    effectiveness = np.clip((np.array(fire_levels) - predicted_fire_intensity) / np.array(fire_levels), 0, 1)
+
+    # Avoid using up all suppressant on one task unless it's really important
+    suppressant_use_ratio = agent_supressant_num / (np.array(fire_intensities) + 0.1 * np.array(fire_levels))
+
+    # Reward more if the fire we are choosing is higher scaled weight
+    score = suppressant_use_ratio * effectiveness * adjusted_fire_putout_weight * normalized_distances
+
+    # Select the fire with the highest score
+    selected_task_index = np.argmax(score)
+
+    return selected_task_index
+```

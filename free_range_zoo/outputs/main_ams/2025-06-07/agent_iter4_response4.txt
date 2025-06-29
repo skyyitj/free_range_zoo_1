@@ -1,0 +1,12 @@
+/opt/anaconda3/envs/three12/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/aten/src/ATen/NestedTensorImpl.cpp:182.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+workspace_dir: /Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/outputs/main_ams/2025-06-10
+
+Average Evaluate Metrics:
+  - Average Rewards: 4.9057
+  - Average Fire Intensity Change: -0.95
+  - Average Suppressant Efficiency: 1.1952 intensity/suppressant
+
+training process finished!
+
+结果已保存到 average_results.csv

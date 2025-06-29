@@ -1,0 +1,51 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    import numpy as np
+
+    num_tasks = len(fire_pos)
+    best_score = -np.inf
+    best_task_index = 0
+    
+    # Temperature parameters for scoring features
+    temp_distance = 0.1       # Inverse sensitivity for distance
+    temp_intensity = 0.3      # Controlling exponent for intensity
+    temp_resource = 0.4       # Multiplier of suppressant resources impact
+    temp_level = 0.2          # Multiplier for fire levels
+
+    for task_idx in range(num_tasks):
+        # Calculate Euclidean distance between agent_pos and fire task position
+        fy, fx = fire_pos[task_idx]
+        ay, ax = agent_pos
+        distance = np.sqrt((fy - ay)**2 + (fx - ax)**2)
+        
+        # Access fire intensity and reward weight
+        intensity = fire_intensities[task_idx]
+        level = fire_levels[task_idx]
+        weight = fire_putout_weight[task_idx]
+
+        # Theoretical remaining fire intensity after agent action
+        post_action_intensity = max(0, intensity - agent_fire_reduction_power * agent_suppressant_num)
+        
+        # Calculate score components
+        score_distance = np.exp(-distance * temp_distance)  # Reward closer fires
+        score_intensity = (1.0 / (1.0 + np.exp(-(intensity - post_action_intensity) * temp_intensity)))
+        score_resource = np.exp(-((agent_suppressant_num / intensity) * temp_resource))  # Prefer using less resources
+        score_level = np.exp(-(level * temp_level))  # Penalize high level fires
+
+        # Compute final task score
+        score = weight * score_distance * score_intensity * score_resource * score_level
+
+        # Choose the task with the highest score
+        if score > best_score:
+            best_score = score
+            best_task_index = task_idx
+
+    return best_task_index

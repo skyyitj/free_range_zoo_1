@@ -1,0 +1,45 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances from the agent to each fire position
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0])**2 + (f_pos[1] - agent_pos[1])**2)
+        for f_pos in fire_pos
+    ]
+
+    scores = []
+    for idx, fire in enumerate(fire_pos):
+        distance = distances[idx]
+        fire_intensity = fire_intensities[idx]
+        fire_level = fire_levels[idx]
+        weight = fire_putout_weight[idx]
+
+        # Estimating how beneficial it is to attack this fire
+        benefit = (weight * fire_level) / (fire_intensity + 1)  # preventing division by zero
+
+        # Estimating the cost by considering the distance and the suppressant usage
+        # Changing the temperature value for suppressant_use from 10.0 to 3.0 to make it more sensitive
+        suppressant_use = agent_fire_reduction_power / (agent_suppressant_num + 0.1)  # Slight adjustment to denominator for stability
+        cost = np.exp((distance / max(distances)) + suppressant_use / 3.0)  # Adjust the influence of the distance
+
+        # Calculate a score by combining benefit and cost
+        # Here, we maximize the benefit to cost ratio, hence use a negative cost in exponential
+        score = np.exp(benefit * 10.0) / cost  # Amplified benefit's role by multiplying with 10
+
+        # Store the score
+        scores.append(score)
+    
+    # Select the task with the highest score
+    selected_task_index = np.argmax(scores)
+    return selected_task_index
+```

@@ -1,0 +1,55 @@
+```python
+import numpy as np
+
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    num_tasks = len(fire_pos)
+    
+    scores = np.zeros(num_tasks)
+    
+    for i in range(num_tasks):
+        # Calculate distance from agent to fire
+        dist = np.linalg.norm(np.array(agent_pos) - np.array(fire_pos[i]))
+        
+        # Calculate effective intensity left after suppression assuming full use of available power
+        predicted_intensity = fire_levels[i] - (agent_suppressant_num * agent_fire_reduction_power)
+        predicted_intensity = max(predicted_intensity, 0) # Fire intensity cannot be negative
+        
+        # Factors for decision making
+        reward = fire_putout_weight[i]
+        danger = (fire_levels[i] / (predicted_intensity + 0.1))  # Adding small constant to avoid division by zero
+        resource_spend = agent_suppressant_num
+        
+        # Score function components
+        distance_factor_temp = 0.05
+        reward_factor_temp = 1.0
+        danger_factor_temp = 1.0
+        resource_factor_temp = 1.0
+        
+        # Scoring equation
+        distance_score = np.exp(-distance_factor_temp * dist)  # Closer fires have higher scores
+        reward_score = reward * np.exp(reward_factor_temp * reward)  # Higher rewards are favored
+        danger_score = np.exp(danger_factor_temp * danger)  # Higher danger increases the score
+        resource_score = np.exp(-resource_factor_temp * resource_spend)  # Lower resource spend is favored
+        
+        # Combine scores with weights
+        scores[i] = (
+            distance_score * 0.2 +
+            reward_score * 0.3 +
+            danger_score * 0.4 +
+            resource_score * 0.1
+        )
+        
+    # Choose the task with the highest score
+    selected_task = np.argmax(scores)
+    return selected_task
+```
+This policy works by considering multiple factors: distance to the fire, potential rewards, danger mitigation, and suppressant usage. Each factor is weighted differently within the scoring system, enabling strategic decision-making for wildfire suppression to maximize effectiveness while conserving resources.

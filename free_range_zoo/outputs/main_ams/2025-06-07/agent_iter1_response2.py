@@ -1,0 +1,54 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculating distances from the agent to each fire
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    scores = []
+
+    # Adjust parameters based on the policy feedback to better respond to the metrics
+    distance_temperature = 5.0  # Adjusted constant for distance scaling
+    suppressant_temperature = 20.0  # Adjusted temperature constant for suppressant usage
+    normalized_intensity_factor = 100.0  # A new scale factor for better score differentiation
+
+    max_intensity = max(fire_intensities)
+    if max_intensity == 0:
+        max_intensity = 1  # prevent division by zero
+
+    for idx in range(len(fire_pos)):
+        distance = distances[idx]
+        normalized_distance = np.exp(-distance / distance_temperature)
+
+        fire_level = fire_levels[idx]
+        intensity = fire_intensities[idx]
+        weight = fire_putout_weight[idx]
+
+        # Adjust score calculation, factoring in the potential effectiveness of reducing the fire
+        suppression_estimation = min(intensity, agent_fire_reduction_power * inspector_num)
+        normalized_suppression = suppression_estimation / max_intensity
+
+        # Adjust the scoring emphasis with a factor to improve the balancing between spread prevention and saving suppressant
+        score = weight * (normalized_supression ** normalized_intensity_factor) * normalized_distance
+
+        # Calculate anticipated suppressant cost and integrate it into the score
+        suppressant_used = suppression_estimation / agent_fire_reduction_power if agent_fire_reduction_power != 0 else float('inf')
+        suppressant_use_score = suppressant_used / (inspector_num + 1e-6)  # adding epsilon to prevent division by zero
+        effective_score = score * np.exp(-suppressant_use_score / suppressant_temperature)
+
+        scores.append(effective_score)
+
+    # Agent should choose the task with the highest score
+    selected_task_index = np.argmax(scores)
+    return selected_task_index

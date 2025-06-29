@@ -1,0 +1,52 @@
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculation of agent distance to fire location
+        distance = np.sqrt((agent_pos[0] - fire[0]) ** 2 + (agent_pos[1] - fire[1]) ** 2)
+        
+        # Calculate potential suppressant usage accurately, considering resource limits
+        feasible_suppressant_use = min(agent_suppressant_num, fire_intensity / agent_fire_reduction_power)
+        
+        # Calculate potential effectiveness considering actual suppressant that can be used
+        potential_effectiveness = agent_fire_reduction_power * feasible_suppressant_use
+        
+        # Importance of the task based on the environment provided weight
+        importance_weight = fire_putout_weight[task_index]
+
+        # Scoring function that incorporates all these aspects
+        # Adjusted scaling factors (temperatures) for better balancing and effectiveness
+        distance_temp = 5.0
+        effectiveness_temp = 0.5
+        importance_temp = 1.0
+
+        # Include dynamic elements like potential effectiveness and task importance
+        task_score = (
+            -(distance / distance_temp) +                     # Negative influence of distance
+            (potential_effectiveness ** effectiveness_temp) +     # Positive influence of potential effectiveness
+            (importance_weight * importance_temp)                # Weighted importance of the task
+        )
+        
+        # Select task based on the highest score
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index

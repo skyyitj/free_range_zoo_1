@@ -1,0 +1,66 @@
+Here is the policy function implementation:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    num_tasks = len(fire_pos)
+    scores = []
+
+    # Define temperature parameters for transformations
+    intensity_temp = 1.0
+    distance_temp = 0.5
+    suppressant_temp = 2.0
+    reward_temp = 1.0
+
+    for i in range(num_tasks):
+        # Fire location, intensity, and reward weight
+        fire_y, fire_x = fire_pos[i]
+        fire_intensity = fire_intensities[i]
+        fire_reward_weight = fire_putout_weight[i]
+
+        # Calculate distance to fire from agent
+        agent_y, agent_x = agent_pos
+        distance = np.sqrt((agent_y - fire_y) ** 2 + (agent_x - fire_x) ** 2)
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Calculate potential impact on fire intensity
+        remaining_fire_intensity = fire_intensity - (agent_suppressant_num * agent_fire_reduction_power)
+        effectiveness_score = np.exp(-remaining_fire_intensity / intensity_temp)
+
+        # Calculate resource efficiency
+        suppressant_efficiency_score = np.exp(-agent_suppressant_num / suppressant_temp)
+
+        # Incorporate reward prioritization
+        reward_score = np.exp(fire_reward_weight / reward_temp)
+
+        # Combine scores with weighted sum
+        score = (effectiveness_score * reward_score) + distance_score + suppressant_efficiency_score
+        scores.append(score)
+    
+    # Select the task with the maximum score
+    best_task_index = int(np.argmax(scores))
+    return best_task_index
+```

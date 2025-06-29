@@ -11,7 +11,7 @@ readme = "README.md"
 
 requires-python = "^3.10.0"
 dependencies = [
-	"furo @ file:///home/liuchi/yitianjiao/aamas2025/free-range-zoo/docs/deps/furo-2023.8.19-py3-none-any.whl",
+	"furo @ file:///Users/theone/PycharmProjects/free_range_zoo_1/furo-2023.8.19-py3-none-any.whl",
 	"myst-parser (>=4.0.1,<5.0.0)",
 	"sphinx (>=7.4.7,<8.0.0)",
 	"sphinx-autobuild (>=2024.10.3,<2025.0.0)",

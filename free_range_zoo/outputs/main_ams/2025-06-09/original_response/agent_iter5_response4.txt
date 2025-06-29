@@ -1,0 +1,49 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Adjust temperature values to balance different components
+    distance_temp = 0.5  # More heavily consider the distance to mitigate travel inefficiency
+    effectiveness_temp = 2.0  # Encourage suppressant efficiency by emphasizing on suppression capability
+    importance_temp = 2.5  # Increase the importance multiplier for incentivizing high-priority tasks
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate the Euclidean distance to the fire
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+        
+        # Calculate the potential fire reduction and effective suppressant use
+        effective_suppressant_use = min(fire_intensity / agent_fire_reduction_power, agent_suppressant_num)
+        potential_effectiveness = agent_fire_reduction_power * effective_suppressant_use
+        
+        importance_weight = fire_putout_weight[task_index]
+
+        # Score calculation using refined decision metrics
+        task_score = (
+            -np.log(distance + 1) / distance_temp +  # Weighting the distance more heavily
+            np.log(potential_effectiveness + 1) * effectiveness_temp +  # Emphasizing suppressant effectiveness
+            importance_weight * importance_temp  # Increasing the weight of task importance
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```
+
+This updated version of the policy function introduces more aggressive weighting and temperature parameter adjustments to better support fire suppression tasks. The intention is to minimize excessive travel (by weighting distance more heavily), promote efficient suppressant use (by emphasizing suppression effectiveness), and prioritize important fires more (by amplifying the importance weights). This should address suboptimal rewards and also support better management of suppressant resources while tackling critical fires more effectively.

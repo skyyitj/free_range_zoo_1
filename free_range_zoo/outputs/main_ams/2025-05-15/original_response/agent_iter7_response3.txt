@@ -1,0 +1,63 @@
+Considering the evaluation metrics and insights, it's paramount to refine the policy function to optimize the effectiveness of agents against wildfires while conserving firefighting resources. Here's the refined strategy:
+
+**Refinement Strategy Based on Metrics:**
+- **Rewards**: The rewards are decent but implying that while agents are achieving their goals, they could be more effective in prioritizing high-value tasks.
+- **Fire Intensity Change**: A negative value is a good sign but could be better. We need to enhance the agents' ability to reduce fire intensity faster.
+- **Suppressant Efficiency**: While current efficiency is decent, we need better utilization with an aim for a higher ratio of fire intensity reduction per suppressant.
+
+**Revised Policy Enhancements:**
+1. **Aggressively Target High-Value Fires**: Increase focus on highly rewarding fires which also demand immediate attention.
+2. **Resource Management**: Adjust suppressant use calculations to ensure more prudent usage, preventing agents from overshooting necessary suppressant expenditure.
+3. **Distance Heatmaps**: Implement adjusted logistic functions to ensure fires farther away but with higher risks are also considered properly.
+4. **Intensity and Suppressant Balance**: Adjust the relation between intensity suppression and the suppression strength ensuring not just conserving suppressant without real impact.
+
+Revised Policy Function:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+
+    # Adjusted parameters for better policy efficiency
+    distance_scale = 0.05  # focus more on distant but important fires
+    intensity_focus = 1.0  # stark focus on intensity
+    reward_scale = 3.0  # triple emphasis on reward weight
+    
+    # Utilize a dynamic assessment for suppressant use
+    suppressant_use_factor = max(1.0, agent_fire_reduction_power / 5.0 * (agent_suppressant_num / 5))
+
+    for i in range(num_tasks):
+        # Calculate effective distance impacting factor
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        distance_factor = np.log1p(distance) * distance_scale
+
+        # Calculate reward influenced intensity factor
+        intensity = fire_intensities[i] * fire_levels[i]
+        effective_intensity = np.log1p(intensity) * intensity_focus
+
+        # Compute task score evaluating distance, intensity, and resource management
+        score = reward_scale * fire_putout_weight[i] / (distance_factor + effective_intensity + suppressant_use_factor)
+        
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+
+**Enhancements in this Revision:**
+- **distance_scale** allows for sensitiveness to distance, balancing it more effectively with task criticality.
+- **intensity_focus** and **reward_scale** are recalibrated to provide sharper guidance on task selection based on the fire's importance and danger.
+- Added a new suppressant usage dynamic **suppressant_use_factor** to better pace the agents' use of fighting resources over time.
+
+This enhanced policy should yield better task performance metrics by strongly emphasizing high-value/high-intensity tasks, maintaining resource efficiency, and achieving better overall task management.

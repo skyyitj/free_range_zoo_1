@@ -1,0 +1,82 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        Agent Properties:
+            agent_pos: (y, x) coordinates of the agent
+            agent_fire_reduction_power: Fire suppression capability
+            agent_suppressant_num: Available suppressant resources
+
+        Team Information:
+            other_agents_pos: List of (y, x) positions for all other agents
+                            Shape: (num_agents-1, 2)
+
+        Fire Information:
+            fire_pos: List of (y, x) coordinates for all fires
+                     Shape: (num_tasks, 2)
+            fire_levels: Current fire intensity at each location
+                        Shape: (num_tasks,)
+            fire_intensities: Base difficulty of extinguishing each fire
+                            Shape: (num_tasks,)
+
+        Task Weights:
+            fire_putout_weight: Priority weights for task selection
+                               Shape: (num_tasks,)
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    # Initialize scores for each fire task
+    num_tasks = len(fire_pos)
+    scores = []
+
+    # Constants (temperatures for transformations)
+    distance_temperature = 10.0  # Controls scaling of mission proximity into scores
+    intensity_temperature = 5.0  # Adjusts importance of fire intensity
+    reward_temperature = 1.0     # Emphasizes task prioritization weights
+
+    # Compute scores for each fire task
+    for i in range(num_tasks):
+        # Distance factor (minimize travel distance)
+        distance = np.linalg.norm(np.array(agent_pos) - np.array(fire_pos[i]))
+        distance_score = np.exp(-distance / distance_temperature)
+
+        # Fire intensity factor (prioritize fires with higher intensity)
+        intensity_score = np.exp(fire_intensities[i] / intensity_temperature)
+
+        # Reward weight factor (account for task prioritization weights)
+        reward_score = np.exp(fire_putout_weight[i] / reward_temperature)
+
+        # Compute overall score for this task
+        score = distance_score * intensity_score * reward_score
+
+        # Ensure agent has enough suppressant to meaningfully handle the fire
+        if agent_suppressant_num < fire_intensities[i] / agent_fire_reduction_power:
+            score = 0  # Ignore tasks that the agent cannot fulfill due to limited resources
+
+        scores.append(score)
+
+    # Select the task with the highest score
+    best_task_index = int(np.argmax(scores))
+    return best_task_index
+```

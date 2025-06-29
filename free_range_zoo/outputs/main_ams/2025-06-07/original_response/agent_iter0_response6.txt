@@ -1,0 +1,56 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    import numpy as np
+
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    best_task_score = float('-inf')
+
+    distance_temperature = 1.0
+    intensity_temperature = 2.0
+    level_temperature = 3.0
+    suppressant_temperature = 1.5
+
+    # Iterate all possible fire tasks to calculate a score for each
+    for task_index in range(num_tasks):
+        task_pos = fire_pos[task_index]
+        fire_intensity = fire_intensities[task_index]
+        fire_level = fire_levels[task_index]
+        priority_weight = fire_putout_weight[task_index]
+        
+        # Calculate distance to the fire task from current agent position
+        distance = np.sqrt((task_pos[0] - agent_pos[0])**2 + (task_pos[1] - agent_pos[1])**2)
+        normalized_distance = np.exp(-distance / distance_temperature)
+        
+        # Consideration of the fire intensity
+        normalized_intensity = np.exp(-fire_intensity / intensity_temperature)
+
+        # Consider the fire level which indicates the urgency
+        normalized_level = np.exp(fire_level / level_temperature)
+
+        # Agent's available suppressant influences the decision
+        if agent_suppressant_num > 0:
+            suppressant_efficiency = np.exp(min(agent_suppressant_num, fire_intensity) / suppressant_temperature)
+        else:
+            suppressant_efficiency = 0
+
+        # Compute overall score for choosing this task
+        task_score = priority_weight * (normalized_distance + normalized_intensity + normalized_level + suppressant_efficiency)
+
+        # Select the task with the highest score
+        if task_score > best_task_score:
+            best_task_score = task_score
+            best_task_index = task_index
+
+    # Return the index of the fire task that has the highest calculated score
+    return best_task_index
+```

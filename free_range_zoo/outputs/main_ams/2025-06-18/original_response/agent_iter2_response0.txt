@@ -1,0 +1,84 @@
+Here’s the implementation of the required policy function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    # Parameters for score transformation (normalize components)
+    distance_temperature = 10.0
+    intensity_temperature = 1.0
+    priority_temperature = 1.0
+
+    # Initialize variables
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Iterate over all fire tasks to calculate scores
+    for i in range(num_tasks):
+        # Task parameters
+        fire_location = fire_pos[i]
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        priority_weight = fire_putout_weight[i]
+
+        # Distance from agent to fire location (Euclidean)
+        agent_y, agent_x = agent_pos
+        fire_y, fire_x = fire_location
+        distance = np.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+
+        # Calculate reduction potential
+        reduction_potential = agent_fire_reduction_power * agent_suppressant_num
+
+        # Remaining fire intensity after suppression
+        remaining_fire_intensity = max(fire_intensity - reduction_potential, 0)
+
+        # Score components
+        distance_component = np.exp(-distance / distance_temperature)
+        intensity_component = np.exp(-remaining_fire_intensity / intensity_temperature)
+        priority_component = np.exp(priority_weight / priority_temperature)
+
+        # Combine components for task score
+        task_score = distance_component * intensity_component * priority_component
+        task_scores.append(task_score)
+
+    # Select the task with the highest score
+    best_task_index = int(np.argmax(task_scores))
+    return best_task_index
+``` 
+
+### Explanation:
+1. **Distance Component**: A `distance_component` is calculated using an exponential decay formula `(np.exp(-distance / temperature))`, which penalizes tasks further away from the agent, making them less attractive unless absolutely necessary.
+   
+2. **Intensity Component**: The remaining intensity (`remaining_fire_intensity`) is factored in using another exponential decay formula `(np.exp(-remaining_fire_intensity / temperature))`. This ensures tasks with higher fire intensity or residual fire levels are prioritized.
+
+3. **Priority Component**: Fire tasks with higher reward weights (`fire_putout_weight`) are prioritized using an increasing exponential transformation `(np.exp(weight / temperature))`.
+
+4. **Score Calculation**: The final task score is calculated as the product of the distance, intensity, and priority components, allowing a balanced evaluation of multiple criteria.
+
+5. **Normalization Using Temperatures**: Three temperature parameters (`distance_temperature`, `intensity_temperature`, `priority_temperature`) normalize score components appropriately, allowing fine-tuning based on environment specifics.
+
+6. **Task Selection**: The agent selects the fire task with the maximum computed score using `np.argmax`.
+
+This policy balances immediate suppression needs, prioritization, and resource management, incorporating all outlined dynamic factors.

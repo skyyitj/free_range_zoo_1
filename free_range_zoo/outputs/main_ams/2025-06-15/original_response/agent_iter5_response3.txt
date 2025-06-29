@@ -1,0 +1,71 @@
+Here's a policy function that balances fire suppression effectiveness with prioritization of critical locations while optimizing resource use:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    num_tasks = len(fire_pos)
+    scores = []
+    
+    # Temperature parameters for score components
+    intensity_temp = 1.0
+    priority_temp = 0.5
+    distance_temp = 0.3
+
+    for i in range(num_tasks):
+        # Compute distance to the fire task (Euclidean distance)
+        agent_y, agent_x = agent_pos
+        fire_y, fire_x = fire_pos[i]
+        distance = ((agent_y - fire_y)**2 + (agent_x - fire_x)**2)**0.5
+        
+        # Compute fire suppression feasibility
+        remaining_fire = fire_intensities[i] - (agent_fire_reduction_power * agent_suppressant_num)
+        suppression_effectiveness = 1 / (1 + max(remaining_fire, 0))  # Higher suppression = higher score
+
+        # Scale fire intensity and priority weight
+        scaled_intensity = np.exp(fire_intensities[i] / intensity_temp)  # Importance of larger fires
+        scaled_priority = np.exp(fire_putout_weight[i] / priority_temp)  # Higher priority = higher score
+
+        # Scale distance to avoid high travel costs
+        scaled_distance = np.exp(-distance / distance_temp)  # Closer fires preferred
+
+        # Combine components into a composite score
+        score = (
+            suppression_effectiveness * scaled_intensity * scaled_priority * scaled_distance
+        )
+        scores.append(score)
+    
+    # Choose the task with the highest score
+    best_task = int(np.argmax(scores))
+    return best_task
+``` 
+
+### Key Features:
+1. **Suppression Effectiveness:** Tasks with lower remaining fire intensity after suppression are preferred.
+2. **Fire Intensity Scaling:** Larger fires are prioritized with an exponential function using the `intensity_temp` parameter.
+3. **Priority Weight Scaling:** Fire locations with higher priority weights are emphasized using the `priority_temp` parameter.
+4. **Distance Scaling:** Closer fires are preferred to minimize resource utilization and delay using the `distance_temp` parameter.
+5. **Composite Scoring:** All metrics are combined into a weighted score, and the task with the highest score is selected.
+
+### Parameter Tuning:
+Adjust `intensity_temp`, `priority_temp`, and `distance_temp` to fine-tune the weights for fire intensity, priority, and distance considerations based on the simulation dynamics and goals.

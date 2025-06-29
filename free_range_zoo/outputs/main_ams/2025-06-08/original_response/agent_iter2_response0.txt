@@ -1,0 +1,531 @@
+Let's analyze the feedback given and systematically address theLet's carefully evaluate the policy feedback and address each metricLet's analyze the feedback step by step and improve theLet's analyze feedback and metrics step by step to improve the problems while improving the policy.
+
+### for improvement:
+
+### Metrics Analysis & Improvement policy function accordingly:
+
+### Understanding and Address policy function:
+
+### Step 1: Analyze Each Step-by-Step Analysis of Metrics:
+
+1. **Average Rewards (ing the Metrics:
+
+1. **Rewards (4.8075): Metric and Propose Improvements
+1. **Rewards (4. Plan
+
+1. **Rewards (4.8075):**
+   - This is4.8075):**
+   - The rewards are positive (ind positive but not optimal. Improving overall priorit**
+   - The rewards are positive and reasonably high,8075)**:
+   - The rewards are positive and relatively high, indicatingicating some success), but the goal should be to maximizeization, especially for high-reward fire tasks, will but there's room for improvement.
+   - Improvement: Prior the agents are performing well in this further.
+   - Rewards can be improved by betteritize fire tasks with higher `fire_putout_weight` selecting high-priority tasks.
+   - **Improvement Plan help increase this value.
+
+2. **Fire Intensity Change (- prioritization of fires with high `fire_putout values to maximize rewards.
+
+2. **Fire Intensity Change**: Continue prioritizing high-reward tasks to maximize this0.93):**
+   - Negative values indicate that while fires_weight`.
+
+2. **Average Fire Intensity Change (-0. are being suppressed, the mitigation rate is slow metric.
+
+2. **Fire Intensity Change (-0 (-0.93):**
+   - Negative fire intensity change indicates. Further prioritization of high-intensity fires the policy is reducing fire intensity but not93):**
+   - Fire intensity is decreasing but can be improved.93)**:
+   - A negative value indicates that fire suppression is and efficient suppressant use will address this. Fires further by prioritizing high-intensity fires and at an optimal level.
+   - Improvement: Emphasize targeting occurring but may not be aggressive enough to with higher levels and intensities should attract more optimizing resource allocation.
+
+3. **Average Suppressant further reduce fire severity.
+   - **Improvement fires with higher `fire_levels` and `fire_int Efficiency (1.1654 intensity/suppressant): attention.
+
+3. **Suppressant Efficiency (1.1654 intensity Plan**: Prioritize higher-intensity fires to reduceensities` to reduce fire severity more quickly.
+
+3/suppressant):**
+   - Resource efficiency is**
+   - Efficiency is decent but must be improved by total fire severity. Increase the emphasis on. **Suppressant Efficiency (1.1654 intensity/suppressant focusing suppressants where they have the most impact relatively good but can be improved. Ensure the suppressant is fire intensity in the scoring mechanism.
+
+3. **Suppressant only used on fires where it's most effective):**
+   - Resource usage is somewhat efficient but should be (e.g., fires with higher severity).
+
+4. **Burn Efficiency (1.1654)**:
+   - This is fairly efficient further improved.
+   - Improvement: Prior.
+
+4. **Burning Number:**
+   - High burning firesing Number:**
+   - Lowering the number of unhandled fires can but can be improved further.
+   - **Improvement Planitize fires that can be fully extinguished with minimal suppressant to indicate a delay in tackling critical fires. increase efficiency.
+
+4. **Burning be achieved by ensuring better task allocation and proximity priorit**: Ensure suppressant resources are allocated to fires where Incorporating prioritization based on proximity and urgency can they have maximum impact—fires that areization.
+
+5. **Putout Number:**
+ Number:**
+   - Fires remaining unhandled suggest inefficient help.
+
+5. **Putout Number:**
+   - Increasing put task assignments or misprioritization.
+   - Increasing the number of successfully extinguished close to being extinguished or of very high intensity.
+
+4.out numbers requires focusing on fires that can   - Improvement: Incorporate proximity and urgency into the fires is crucial for improving overall task performance.
+
+6. be fully extinguished quickly using current resources.
+
+ **Burning Number**:
+   - A lower value here reflects better handling of scoring to reduce response delays.
+
+5. **Putout **Burnedout Number:**
+   - Fires that self-extinguish fires, meaning fewer fires are left unhandled.
+  6. **Burnedout Number:**
+   - Fires burning out without Number:**
+   - Increasing the number of extinguished indicate delayed intervention. Prioritizing fires that - **Improvement Plan**: Incorporate priority intervention are likely due to a lack of urgency in priority are closer and intensifying can help reduce this fires should be a key objective.
+   - Improvement: Act for nearby fires and reduce task-switching across assignments. This can be minimized by balancingively prioritize fires that can be extinguished, weighted proximity and available resources.
+
+7. **Steps.
+
+7. **Steps:**
+   - Reducing the number of steps requires distant fires.
+
+5. **Putout Number**:
+   - by their severity and reward.
+
+6. **Burnedout optimizing the distance-based prioritization to improve:**
+   - Average steps to task completion should be A higher number indicates successful fire extinguishments.
+ efficiency and collaboration among agents.
+
+### minimized by prioritizing nearby fires and reducing unnecessary Number:**
+   - Fires that burn out without being handled   - **Improvement Plan**: Add a scoring component Improvements to the Policy:
+
+To improve the policy, movement.
+
+---
+
+### Improvements to Policy Function
+
+ imply delayed responses or poor resource usage.
+  Based for fires that can be fully extinguished by on the analysis, the revised function will we'll:
+1. **Refine Prioritization Scheme:**
+   - Improvement: Adjust the policy to act on highly critical fires earlier - Incorporate the agent's remaining resources.
+
+6. **Burnedout Number temperature parameters for better emphasis:
+1. Introduce a stronger emphasis on proximity to prioritize nearby**:
+   - This measures the.
+
+7. **Steps:**
+   - Reducing steps can on critical factors like proximity, fire severity, number of fires that burn out fires.
+2. Introduce a fire-severity multiplier help complete the task more efficiently.
+   without direct agent intervention, which is undesirable and priority weights.
+   - Introduce a new score component that gives weight to both intensity and levels - Improvement: Prioritize nearby tasks and fires that can to discourage actions that leave fires un.
+   - **Improvement Plan**: Prioritize tackling fires on.
+3. Prioritize extinguishability when resources suffice to be fully extinguished to minimize back-and-forthhandled for too long.
+
+2. **Increase Resource Efficiency:** 
+   the verge of burning out (high-level fires).
+
+ movement.
+
+---
+
+### Strategy for Improvement
+
+#### fully suppress a fire.
+4. Refactor the prioritization - Optimize suppressant usage by identifying fires where function to balance urgency (severity), proximity Adjustments:
+- **Proximity:** Fires closer to the agent7. **Steps**:
+   - A lower value indicates faster task completion suppression is most cost-effective (i.e.,, and rewards.
+
+---
+
+### New Policy Function
+
+ should be highly prioritized to minimize the steps.
+   - **Improvement Plan**: where it will lead to extinguishment or prevent spread needed to respond.
+- **Fire Severity:** Fires with```python
+def single_agent_policy(
+    # === Agent Properties === Shorten travel distances by incorporating proximity into task prioritization).
+
+3. **Encourage Collaboration:** 
+   - Add interaction
+    agent_pos: Tuple higher intensities and levels should be given with the positions of other agents.
+
+---
+
+### Step 2: Revised Policy Function[float, float],              to avoid more weight in prioritization to control fire spread.
+
+
+Below is the improved policy function based redundant task allocation.
+
+4. **Increase Steps # Current position of the agent (y, x)
+ on feedback and the proposed improvements:
+
+```python- **Reward Weight:** Refocus on high-reward fires and Fire Mitigation Efficiency:** 
+   - Assign higher scores to    agent_fire_reduction_power: float,           # How much
+def single_agent_policy(
+    # === Agent Properties === to maximize the overall reward metric.
+- **Resource Allocation fires that can be extinguished faster to reduce fire the agent can reduce
+    agent_suppressant_num::** Target fires where the agent's suppressant capability
+    agent_pos: Tuple[float, float],              total steps taken.
+
+Here is the revised policy function can lead to complete extinguishment float,                # Amount of fire suppressant available # Current position of the agent (y, x)
+:
+
+```python
+def single_agent_policy(
+    # === Agent.
+- **Urgency:** Incorporate an urgency factor, penal
+
+    # === Team Information ===
+    other_agents    agent_fire_reduction_power: float,           #izing delayed responses to fires that are likely to Properties ===
+    agent_pos: Tuple[float,_pos: List[Tuple[float, float]], # Positions of all How much fire the agent can reduce
+    agent_suppressant spread.
+
+### Revised Policy Function
+
+```python
+ float],              # Current position of the agent (y_num: float,                # Amount of fire suppressant available
+
+def single_agent_policy(
+    # === Agent Properties ===
+, x)
+    agent_fire_reduction_power: float,           # How other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire    # === Team Information ===
+    other Task Information ===
+    fire_pos: List[Tuple    agent_pos: Tuple[float, float],              # Current position of the agent much fire the agent can reduce
+    agent_suppressant_num: float, (y, x_agents_pos: List[Tuple[float, float]], # Positions of)
+    agent_fire_re                # Amount of fire suppressant available[float, float]],         # Locations of all fires [(y1, x1),duction_power: float,           # How much fire the agent can
+
+    # === Team Information ===
+    other_agents_pos all other agents [(y1, x1), (y2, x2), ...]
+
+    # (y2, x2), ...]
+    fire_levels: List[int],                      reduce
+    agent_suppressant_num: float,                === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]], # Positions of all: List[Tuple # Current intensity level of each # Amount of fire suppressant available
+
+[float, float]],         # Locations of all fires [(y    # === Team Information ===
+    other_agents_pos: fire
+    fire_intensities: List[float],               # Current other agents [(y1, x1), (y2, x2), ...]
+
+    # === intensity value of each fire task
+
+    # === Task List[Tuple[float, float]], # Positions of all other agents Fire Task Information ===
+    fire_pos: List[Tuple1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      Prioritization ===
+    fire_putout_weight: # Current intensity level of each[float, float]],         # Locations of all fires [(y List[float],             # Priority weights for fire suppression tasks [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information === fire
+    fire_intensities: List[float],               #
+) -> int:
+    import math
+
+    num_tasks =1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      #
+    fire_pos: List[Tuple[float, float]],         # Current intensity value of each fire task
+
+    # === Task Prior Current intensity level of each fire len(fire_pos)
+    task_scores = []
+
+    # Temperatureitization ===
+    fire_putout_weight: List Locations of all fires [(y1, x1), (y2, x2
+    fire_intensities: List[float],               # parameters for score components
+    proximity_temp = Current intensity value of each[float],             # Priority weights for fire suppression 3.0      # Strong emphasis), ...]
+    fire_levels: List[int],                      # fire task
+
+    # === on nearby fires
+    tasks
+) -> int:
+    import math
+
+    num_tasks = Current intensity level of each fire
+    fire_intensities Task Prioritization ===
+    fire_putout_weight: List severity_temp = 1.5       # Scales importance of fire len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters: List[float],               # Current intensity value of[float],             # Priority weights for fire suppression for score components
+    proximity_temp severity
+    reward_temp = 1.0         # Scales priority each fire task
+
+    # === Task Prioritization ===
+ tasks
+) -> int:
+    import math
+
+    num_tasks weights from fire_putout_weight
+    extinguishable_bonus = 3.0        # Emphasize distance in scoring
+    intensity_temp =    fire_putout_weight: List[float],             # Priority = len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters = 2.0 # Extra score for fully extinguishable 2.0        # Prioritize high weights for fire suppression tasks
+) -> for score components
+    proximity_temp = fires
+
+    for i in range(num_tasks):
+        # Pro 4.0          # Balances distance preference
+    int:
+    import math
+
+    num_tasks = len(fire_pos)
+   -intensity fires
+    priority_weight_temp = 1.0  # Emphasximity component based on agent's distance to fire
+ task_scores = []
+
+    # Temperature parameters forize task priority
+    extinguishable_bonus =  severity_temp = 1.5           # Emphasizes high-intensity        agent_y, agent_x = agent_pos
+        fire_y, score components
+    proximity_temp = 2.5     #5.0  # Bonus for fires that can be fully extinguished
+
+ fires
+    priority_weight_temp = 0.7    # Gives fire_x = fire_pos[i]
+        distance = math.sqrt(( Stronger emphasis on proximity
+    severity_temp =     for i in range(num_tasks):
+        # === COMPONENT 1 a slight edge to high-reward tasks
+
+    # Weighting1.8      # Balanced emphasis on factors for fire intensity
+    reward the final score
+    proximity_weight =agent_y - fire_y) ** 2 + (agent_x - fire_x) ** : Proximity Score ===
+        agent_y, agent_x = agent_pos
+2)
+        proximity_component_temp = 1.5        # Focus on maximizing reward
+    urgency = math.exp(-distance / proximity -2.0
+    severity_weight = 2.5
+    extinguishable        fire_y, fire_x = fire_pos[i]
+        distance_temp)
+
+        # Fire severity component based on fire_temp = 1.0       # Urgency based on fire_weight = 3.0
+    coordination_penalty_weight = intensity and level
+        fire_severity = = math.sqrt((agent_y - fire_y) ** 2 + (agent_x - levels
+    extinguishable_temp = 2.0  # Emphasize fire_intensities[i] * fire_levels[i]
+        severity_component fires that can be fully extinguished 
+
+    -1.0
+    priority_weight = 1.2
+
+    for i in range fire_x) ** 2)
+        proximity_score = math.exp = math.exp(fire_severity / severity_temp)
+
+(num_tasks):
+        # Proximity component based on Euclidean distance(-distance / proximity_temp)  # Closer fires score higher for i in range(num_tasks):
+        # === Extract Fire and Agent        # Task priority/reward weight component
+       
+        agent_y, agent_x = agent_pos
+       
+
+        # === COMPONENT 2: Fire Intensity Score === Info ===
+        agent_y, agent_x = agent_pos
+ reward_component = math.exp(fire_putout_weight[i] /
+        fire_intensity = fire_intensities[i fire_y, fire_x = fire_pos[i]
+        distance = math        fire_y, fire_x = fire_pos[i]
+        distance = math reward_temp)
+
+        # Check if the fire can be]
+        intensity_score = math.exp(fire_intensity /.sqrt((agent_y - fire_y) ** 2 + (agent_x - fire_x fully extinguished by the agent
+        extinguishable = agent_fire_reduction.sqrt((agent_y - fire_y) ** 2 + (agent_x - fire_x intensity_temp)  # Higher intensity fires score higher
+
+_power * agent_suppressant        # === COMPONENT 3: Priority Weight Score) ** 2)
+        normalized_proximity = math.exp(-distance) ** 2)
+
+        # Proximity Component
+        normalized_proximity_num >= fire_intensities[i]
+        extinguishable_score = / proximity_temp)
+
+        # Fire severity component ===
+        priority_weight_score = math.exp(fire = math.exp(-distance / proximity_temp)
+
+        extinguishable_bonus if extinguishable else 0 based on fire intensity and level
+        fire_se_putout_weight[i] / priority_weight_temp)
+
+        # === # Fire Severity Component
+        fire_severity =.0
+
+        # Combined task score
+        task_score = COMPONENT 4: Extinguishverity = fire_intensities[i] * fire_levels[i]
+ability Check ===
+        # Check fire_intensities[i] * fire_levels[i]
+        normalized_severity (
+            2.0 * proximity_component     # Stronger emphasis on        normalized_severity = math.exp(fire_severity / severity if the agent can fully extinguish the fire with its = math.exp(-fire_severity / severity_temp)
+
+       _temp)
+
+        # Task priority component
+ nearby fires
+            + 1.5 * severity_component    # available suppressant
+        can_extinguish = # Task Priority Component (Reward Weight)
+               normalized_priority_weight = math.exp(fire_putout agent_fire_reduction_power * agent_suppressant_num Emphasize high-severity fires
+            + reward_component normalized_reward = math.exp(fire_putout_weight[i_weight[i] / priority_weight_temp)
+
+        # Ext            # Incorporate fire reward priority >= fire_intensity
+        extinguishable_score =] / reward_temp)
+
+        # Urgency Component (
+            + extinguishable_score        # Bonusinguishable component (if the agent can fully extinguish extinguishable_bonus if can_extinguish else 0.0
+
+ for fires that can be fully extinguished
+        )
+
+based on fire level)
+        normalized_urgency = fire_levels[i the fire)
+        extinguishable = agent_fire_re        # Append the score for the current fire        # === COMPONENT 5: Fire Level Score ===
+       ] / urgency_temp
+
+        # Extinguishabilityduction_power * agent_suppressant_num >= fire_int Component (if the fire canensities[i]
+        extinguishable task
+        task_scores.append(task_score)
+
+    # # High-level fires (closer to burning out) be fully extinguished_score = 1.0 if extingu Select task with the highest score
+    best_task_index get an additional score boost
+        fire_level_score = by the agent)
+        extinguishable = (
+            agentishable else 0.0
+
+        # Coordination penalty component = max(range(num_tasks), key=lambda idx: task_scores_fire_reduction_power * agent_suppressant_num >= to avoid redundant task assignment
+        math.exp(fire_levels[i] / 2.0)  # Scale fire levels moderately
+
+[idx])
+    return best_task_index
+```
+
+---
+
+### fire_intensities[i]
+        )
+        extinguishable_score coordination_penalty = 0.0
+        for other_pos in        # === Combine Scores ===
+        total_score Explanation of Changes
+
+1. **Proximity Component:**
+ other_agents_pos:
+            other_y, other_x = other = (proximity_score +
+                       2. = math.exp(1.0 if extinguishable else 0.0 / extinguishable   - Fires closer to the agent are prioritized through `_pos
+            other_distance = math.sqrt_temp)
+
+        # === Combine Score Components0 * intensity_score +  # Weight fire intensity more heavily
+proximity_component`. A lower `proximity_temp` ===
+        task_score = (
+            2.                       1.5 * priority_weight_score makes proximity impact stronger, ensuring agents address +
+                       extinguishable_score +
+                      ((other_y - fire_y) ** 2 + (other_x - fire_x) ** 2)
+           5 * normalized_reward          # Maximize rewards
+            fire_level_score)
+
+        task_scores nearby fires first.
+
+2. **Severity Component:**
+  .append(total_score)
+
+    # Select the task + 2.0 * normalized_urgency       # Emphas if other_distance < 1.5:  # Penalty if another agent is - Fires are weighted by their severity (intensity × already nearby
+                coordination_pen with the highest score
+    best_task_idx = max(range(num level), and `severity_component` scales this importance withize urgency
+            + 1.5 * extinguishable_score     # Prior a temperature value. Fires with higher severityalty += 1.0
+
+        # Combined score calculation
+       _tasks), key=lambda idx: task_scores[idx])
+itize extinguishable fires
+            - task_score = (
+            proximity_weight *    return best_task_idx
+```
+
+---
+
+### now get more attention.
+
+3. **Task Priority Component 1.0 * normalized_proximity     # Penalize distant fires
+ Step 3: Key Improvements in normalized_proximity +
+            severity_weight * normalized_se:**
+   - `reward_component` uses the givenverity +
+            priority_weight * normalized            + 2.0 * normalized_severity      # Focus the Revised Policy
+1. **Better Fire Intensity Prior_priority_weight +
+            extinguishable_weight `fire_putout_weight` as an additional prioritization factor.
+
+ on fire severity
+        )
+        task_scores.append * extinguishable_score +
+            coordinationitization**:
+   - Introduced a stronger weighting for fire_penalty_weight * coordination_penalty
+       4. **Extinguishability Check:**
+   - Added a bonus intensity (by increasing its score contribution).
+(task_score)
+
+    # Select the best task (highest score)
+    )
+        task_scores.append(task_score)
+
+    #   - High-intensity fires now take precedence.
+
+ (`extinguishable_score`) for fires that can be best_task_idx = max(range(num_tasks), key=lambda idx: handled entirely with available resources (`extingu Select the best task (highest score) while ensuring suppressant2. **Proximity Emphasis**:
+   - Retainedishable_bonus`). This directs task_scores[idx])
+
+    return best_task_idx
+ agents to extinguishable availability
+    if agent_suppressant_num > proximity as a key factor, ensuring nearby fires are tackled```
+
+---
+
+### Improvements in the New Policy
+
+1. ** 0:
+        best_task_idx = max(range(num fires first.
+
+5. **Weight Adjustments:**
+   -_tasks), key promptly to reduce steps and burning numbers.
+
+3 Increased weights for proximity and severity to ensureProximity:** Penalizes distant fires more significantly to reduce steps and burning numbers a balance between responding rapidly to nearby fires. **Extinguishability Bonus**:
+   - Fires that can=lambda idx: task_scores[idx])
+    else:
+        best_task_idx =.
+2. **Fire Severity:** and addressing fires that pose a greater spread risk be completely extinguished are given a high score boost -1  # No suppressant, no task assignment
+
+    (`extingu Scores of higher-intensity fires are elevated to expedite fire.
+
+---
+
+### Expected Improvements
+
+1. **Rewards:** Increased suppression, improving fire intensity change.
+3 return best_task_idx
+```
+
+### Key Changes and Rishable_bonus = 5.0`), increasing the likelihood rewards by prioritizing high-reward fires and. **Reward:** Fires with higher `fire_putout_weight of maximizing the putout number.
+
+4. **Fireationale:
+1. **Proximity Optimization:**
+   - Adjusted ` extinguishable tasks.
+2. **Fire Intensity Change:**` values are strongly prioritized, leading to higher Levels**:
+   - Added a component to prioritize high Faster suppression of fires with high severity shouldproximity_temp` to 4.0 to ensure reasonable prioritization rewards.
+4. **Extinguishability:** Fires that-level fires that are closer to burning out, reducing the improve this value.
+3. **Suppressant Efficiency:** Strategic of nearby fires without overly penalizing distant fires the agent can fully extinguish are given a significant score boost, resource use ensures suppressant is used effectively.
+ improving suppressant efficiency and put burnedout number.
+
+5. **Balanced Weights**:
+   - Adjusted.
+
+2. **Severity Adjustment:**
+   - Increased the relative contributions of proximity, intensity, task4. **Burning/Putout/Burnedout Numbers:** weighting of fire severity through `severity_temp` andout numbers.
+5. **Urgency:** Integrating fire levels as priority, and extinguishability to optimize all metrics Lower burning and burned out fires, and higher putout `severity_weight` to ensure prioritization of high-int an urgency factor ensures timely response to potentially spreadingensity effectively.
+
+---
+
+### Step 4: Expected Improvements numbers due to prioritized dispatch.
+5. **Steps fires.
+
+3. **Task Priority Emphasis:**
+   in Metrics
+1. **Rewards**: Should improve further:** Reduced steps required to complete tasks by focusing on proximity - Strengthened the importance of reward weights using `priority due to better handling of high.
+
+This revised policy should better optimize-reward fires and_weight_temp` and its associated score component extinguishment prioritization.
+2. **Fire Intensity Change**.
+
+4. **Extinguishable Check:**
+   - Fires that: A stronger focus on fire intensity and extinguish can be extinguished by the agent's resources are given aability should result in a positive change.
+3. **Suppress significant boost in priority.
+
+5. **Coordinationant Efficiency**: By prioritizing extinguishable fires Penalty:**
+   - Introduced a new component to discourage and higher-intensity fires, efficiency should improve multiple agents from focusing on the same fire.
+
+.
+4. **Burning Number**: Lower, as more fires are effectively6. **Balanced Weighting:**
+   - Adjusted weights of score components to ensure balanced handled.
+5. **Putout Number**: Higher, prioritization across fire characteristics.
+
+This policy optimizes thanks to the extinguishability bonus.
+6. **Burned fire handling by efficiently allocating suppressant resources and reducing redundant assignments, leading to improvedout Number**: Lower, with stronger emphasis on high-level fires.
+7. **Steps**: Reduced steps due to preference for task assignments in the wildfire suppression simulation. performance across all metrics. nearby fires. fires, reducing burned-out numbers.
+

@@ -23,7 +23,7 @@ class GenerateAgent(Agent):
         """
         super().__init__(agent_name, parallel_envs)
         self.actions = torch.zeros((parallel_envs, 2), dtype=torch.int32)
-
+        self.attack_range = 1
         # 从配置中获取场地尺寸
         if 'configuration' in kwargs:
             config = kwargs['configuration']
@@ -90,13 +90,17 @@ class GenerateAgent(Agent):
 
                 # 确保坐标在有效范围内
                 if 0 <= fire_x < self.grid_width and 0 <= fire_y < self.grid_height:
+                    # 计算火焰与agent的距离
                     if [i, 0] in action_space.spaces[0].enumerate():
-                        # 将火点的索引存储到valid_action_space中
-                        index_map[len(fire_pos_new)] = i
-                        fire_pos_new.append(fire_pos[i])
-                        fire_levels_new.append(fire_levels[i])
-                        fire_intensities_new.append(fire_intensities[i])
-                        fire_rewards_weights.append(float(self.reward_config[fire_y, fire_x]))
+                        # distance = abs(fire_x - agent_pos[1]) + abs(fire_y - agent_pos[0])  # 曼哈顿距离
+                        # if distance <= self.attack_range:  # 判断是否在攻击范围内
+                        # if [i, 0] in action_space.spaces[0].enumerate():
+                            # 将火点的索引存储到valid_action_space中
+                            index_map[len(fire_pos_new)] = i
+                            fire_pos_new.append(fire_pos[i])
+                            fire_levels_new.append(fire_levels[i])
+                            fire_intensities_new.append(fire_intensities[i])
+                            fire_rewards_weights.append(float(self.reward_config[fire_y, fire_x]))
                 else:
                     print(f"Warning: Fire point {i} out of bounds: x={fire_x}, y={fire_y}")
             assert len(fire_rewards_weights) == len(fire_pos_new) == len(fire_levels_new) == len(fire_intensities_new)

@@ -1,0 +1,44 @@
+# Methodology
+1. Compute the distance between the agent and each fire task
+2. Compute the estimated suppressant required to put out each fire task
+3. Compute the estimated time to put out each fire task (account for the agent's fire suppression power)
+4. For each fire task, compute a suppression urgency score based on the estimated time and required suppressant
+5. For each fire task, compute a prioritization score based on the fires' reward weights and suppression urgency scores
+6. Select the fire task with the highest prioritization score
+
+# Implementation
+def single_agent_policy(
+    agent_pos, 
+    agent_fire_reduction_power, 
+    agent_suppressant_num, 
+    other_agents_pos, 
+    fire_pos, 
+    fire_levels, 
+    fire_intensities, 
+    fire_putout_weight
+):
+    import numpy as np
+    
+    # Compute the Euclidean distance between the agent and each fire task
+    distances = np.linalg.norm(np.array(fire_pos) - np.array(agent_pos), axis=1)
+    
+    # Compute the estimated suppressant required to put out each fire task
+    required_suppressant = np.array(fire_levels) / agent_fire_reduction_power
+    
+    # Compute the estimated time to put out each fire task
+    time_estimates = required_suppressant / agent_fire_reduction_power
+    
+    # Compute a suppression urgency score for each fire task
+    suppressant_penalty = 0.5
+    time_penalty = 0.5
+    suppressants_available = (agent_suppressant_num - required_suppressant >= 0).astype(float)
+    suppression_urgency = suppressants_available * (suppressant_penalty * required_suppressant + time_penalty * time_estimates)
+    
+    # Compute a prioritization score for each fire task
+    reward_factor = 0.5
+    prioritization = suppression_urgency + reward_factor * np.array(fire_putout_weight)
+    
+    # Select the fire task with the highest prioritization score
+    action = np.argmax(prioritization)
+    
+    return action

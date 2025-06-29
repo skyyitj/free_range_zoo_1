@@ -1,0 +1,123 @@
+Let's analyze the provided feedback step by step to improve the policy function effectively:
+
+---
+
+### Step 1: Analyze Average Rewards (`6.3`)
+- **What it means:** The agents are accumulating moderate rewards, showing some effectiveness in fire suppression but room for improvement.
+- **What to improve:** Prioritize higher-reward fires without neglecting critical fires that could burn out.
+
+---
+
+### Step 2: Analyze Fire Intensity Change (`-0.93`)
+- **What it means:** The overall fire intensity reduction is insufficient, as the negative value implies fires are continuing to grow or spread.
+- **What to improve:** Increase focus on critical high-intensity fires and optimize resource allocation to maximize fire suppression.
+
+---
+
+### Step 3: Analyze Suppressant Efficiency (`1.0929`)
+- **What it means:** The suppressant usage is somewhat inefficient. Suppression capabilities should be allocated better to reduce fire intensity more effectively.
+- **What to improve:** Ensure agents are assigned to tasks where their resources can make the most impact.
+
+---
+
+### Step 4: Analyze Burning/Burned-Out Numbers
+- **Burning Number:** Fires left unhandled (not in provided metrics but implied) must be minimized. Agents must prioritize critical, close fires to reduce leftover fires.
+- **Burnedout Number:** Fires burning out without handling is a negative outcome and must be avoided by reducing response delay to critically high-level fires.
+
+---
+
+### Step 5: Address Steps Taken
+- **What it means:** The task's completion time is less critical but affects efficiency. Avoid over-prioritizing proximity to ensure better suppression results.
+
+---
+
+### Policy Improvements
+1. **Higher Priorities for Critical Fires:** Introduce a stronger penalty for fires with dangerously high levels.
+2. **Better Resource Usage:** Adjust suppressant scoring to ensure agents reduce fires below critical levels instead of wasting resources on fires unlikely to be extinguished.
+3. **Proximity Balancing:** Modify the distance factor to maintain balance between handling nearby fires and prioritizing critical fires further away.
+4. **Reward Scaling:** Fine-tune use of reward weights to better guide task assignment.
+
+---
+
+Here's the revised policy function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import math
+
+    # Temperature parameters for balancing various factors
+    distance_temperature = 7    # Proximity factor
+    intensity_temperature = 8   # Fire severity scaling
+    suppressant_temperature = 1 # Resource efficiency
+    level_penalty_temperature = 3  # Penalize critical fire levels
+
+    scores = []
+    for i in range(len(fire_pos)):
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+        
+        # Calculate distance between agent and fire
+        distance = math.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+        distance_score = math.exp(-distance / distance_temperature)
+        
+        # Fire severity is prioritized by its intensity
+        intensity_score = math.exp(fire_intensities[i] / intensity_temperature)
+        
+        # Calculate required suppressant based on fire intensity and agent power
+        required_suppressant = fire_intensities[i] / agent_fire_reduction_power
+        suppressant_score = (
+            math.exp(-required_suppressant / suppressant_temperature) 
+            if agent_suppressant_num >= required_suppressant else 0
+        )
+        
+        # Apply penalty for fires with dangerously high levels
+        level_penalty = math.exp(fire_levels[i] / level_penalty_temperature)
+
+        # Adjust final task score by incorporating reward weights
+        total_score = (
+            fire_putout_weight[i] * suppressant_score * intensity_score * 
+            distance_score / level_penalty
+        )
+        scores.append(total_score)
+
+    # Choose the task with the highest score
+    return int(scores.index(max(scores)))
+```
+
+---
+
+### Changes and Justifications:
+1. **Distance Factor (`distance_score`):** Proximity still matters, but reducing the temperature parameter slightly (`7`) ensures critical fires farther away are not ignored.
+2. **Fire Intensity Scaling (`intensity_score`):** Increased emphasis on fire severity (temperature `8`) ensures higher prioritization of severe fires.
+3. **Suppressant Efficiency (`suppressant_score`):** Adjusted resource usage ensures agents focus on achievable tasks within their capabilities.
+4. **High-Level Penalty (`level_penalty`):** Fires with dangerously high levels have additional penalties, guiding agents to handle them promptly.
+5. **Reward Integration:** The weighting ensures fires with higher reward weights are still prioritized, balancing immediate rewards and long-term risk.
+
+---
+
+### Expected Improvements:
+1. **Rewards:** Agents will better prioritize high-reward tasks while addressing critical fires.
+2. **Fire Intensity Change:** Enhanced focus on severe fires reduces overall fire intensity at a faster rate.
+3. **Suppressant Efficiency:** Optimized allocation improves the ratio of intensity reduction to suppressant used.
+4. **Burning/Burned-out Numbers:** Fires left unhandled or burned out are minimized by introducing level penalties and better resource allocation.
+
+This revised policy should lead to improved performance across all metrics and better task accomplishment.

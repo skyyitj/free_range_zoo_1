@@ -1,0 +1,58 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import math
+    
+    num_tasks = len(fire_pos)
+    agent_y, agent_x = agent_pos
+    best_task_index = -1
+    highest_score = -float('inf')
+    
+    # Control how aggressive/conservative the agent should be with its resources
+    resource_management_temp = 30.0
+    suppression_effectiveness_temp = 5.0
+    distance_temp = 1.0
+    
+    # Iterate through all available fire tasks
+    for idx in range(num_tasks):
+        fire_y, fire_x = fire_pos[idx]
+        fire_intensity = fire_intensities[idx]
+        fire_level = fire_levels[idx]
+        weight = fire_putout_weight[idx]
+        
+        # Calculate estimated suppression potential
+        potential_red = min(fire_intensity, agent_fire_reduction_power * agent_suppressant_num)
+        
+        # Calculate distance to the fire
+        distance = math.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+        
+        # Prioritize based on weighted potential reduction, taking into account agent's suppressant limit
+        score = (
+            weight * math.exp(potential_red / suppression_effectiveness_temp)
+            - (fire_level * potential_red)
+            - (distance / distance_temp)
+            - math.exp(agent_suppressant_num / resource_management_temp)
+        )
+        
+        # Update best task choice
+        if score > highest_score:
+            highest_score = score
+            best_task_index = idx
+    
+    return best_task_index
+```

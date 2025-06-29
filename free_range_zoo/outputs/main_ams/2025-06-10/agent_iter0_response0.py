@@ -1,0 +1,57 @@
+from typing import List, Tuple
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_fires = len(fire_levels)
+    
+    # Hyperparameters to tune the balance of the deciding factors
+    distance_temperature = 100.0  # Affects the sensitivity to distance changes
+    intensity_temperature = 1.0   # Affects the sensitivity to intensity changes
+    resource_temperature = 1.0    # Affect the sensitivity to resource consumption
+    weight_temperature = 0.01     # Affects the scaling of weights
+    
+    # Calculate the Euclidean distance from the agent to each fire
+    distances = np.array([np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+                          for fire in fire_pos])
+    
+    effective_power = agent_fire_reduction_power * agent_suppressant_num
+    
+    # Initialize the score array
+    scores = np.zeros(num_fires)
+    
+    for i in range(num_fires):
+        # Calculate the difference in effectiveness based on the intensity
+        if effective_power <= fire_intensities[i]:
+            remaining_intensity = fire_intensities[i] - effective_power
+        else:
+            # More than enough power to reduce the fire
+            remaining_intensity = 0
+        
+        # Calculate the desired scoring components
+        # Negative distance as we prefer closer fires
+        distance_score = -distances[i]
+
+        # Negative remaining intensity since lower remaining is better
+        intensity_score = -remaining_intensity
+        
+        # Weight importance using the given weights
+        weight_score = fire_putout_weight[i]
+        
+        # Composite score for each fire: weighted sum of transformed components
+        scores[i] = (np.exp(distance_score / distance_temperature)
+                     + np.exp(intensity_score / intensity_temperature)
+                     + np.exp(weight_score / weight_temperature))
+    
+    # Choose the fire task with highest score
+    selected_task_index = np.argmax(scores)
+    
+    return selected_task_index

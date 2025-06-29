@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/experiments/train.py", line 13, in <module>
+    from free_range_zoo.envs.wildfire.baselines import GenerateAgent,StrongestBaseline
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/__init__.py", line 5, in <module>
+    from free_range_zoo.envs.wildfire.baselines.generated_agent import GenerateAgent
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 148
+    3. Compute the estimated time to put out each fire task (account for the agent's fire suppression power)
+                                                                                  ^
+SyntaxError: unterminated string literal (detected at line 148)

@@ -1,0 +1,41 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances of the agent to each fire
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances to prioritize nearby fires
+    distance_weight = 1.0
+    normalized_distances = 1 / (np.array(distances) + 0.01)  # small value to avoid division by zero
+    scaled_distances = normalized_distances * distance_weight
+
+    # Calculate potential suppressant effect on each fire, we need to account fire intensities and resource efficiency
+    fire_suppression_need = np.array(fire_intensities) + np.array(fire_levels) * 0.5  # consider intensity and urgency from levels
+    suppressant_possible = agent_suppless_resources / fire_suppression_need
+    effective_suppression = np.minimum(suppressant_possible, 1.0)  # suppressant can't act beyond 100%
+
+    # Boost score due to 'put out' importance
+    extinguishable_fires = agent_fire_reduction_power * agent_supressant_num >= fire_suppression_need
+    effective_suppression[extinguishable_fires] *= 2  # double the effectiveness score if can extinguish
+
+    # Combined priority score based on distances and effective suppression attained per fire
+    scores = fire_putout_weight * (effective_suppression + scaled_distances)
+
+    # Selection of the fire task with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index
+```

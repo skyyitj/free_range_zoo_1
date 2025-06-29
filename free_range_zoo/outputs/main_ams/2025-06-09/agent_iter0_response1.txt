@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/experiments/train.py", line 13, in <module>
+    from free_range_zoo.envs.wildfire.baselines import GenerateAgent,StrongestBaseline
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/__init__.py", line 5, in <module>
+    from free_range_zoo.envs.wildfire.baselines.generated_agent import GenerateAgent
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 197
+    resource_score = np.exp(resource_temperature * (agent_suppressant_num - needed_resource))_score
+                                                                                             ^^^^^^
+SyntaxError: invalid syntax

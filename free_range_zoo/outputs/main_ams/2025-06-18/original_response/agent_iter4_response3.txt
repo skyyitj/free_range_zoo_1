@@ -1,0 +1,72 @@
+Here’s a potential implementation of the policy function that adheres to the wildfire suppression task rules and objectives, aiming to prioritize fires based on urgency and reward weights while factoring in the agent’s capacity:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]],
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters for transformations
+    intensity_temp = 0.5
+    distance_temp = 1.0
+    reward_temp = 1.5
+
+    for i in range(num_tasks):
+        # Distances between agent and fire location
+        distance = np.linalg.norm(np.array(agent_pos) - np.array(fire_pos[i]))
+        
+        # Normalize components
+        fire_intensity_transformed = np.exp(fire_intensities[i] / intensity_temp)
+        distance_transformed = np.exp(-distance / distance_temp)
+        reward_weight_transformed = np.exp(fire_putout_weight[i] / reward_temp)
+
+        # Compute score
+        score = reward_weight_transformed * fire_intensity_transformed * distance_transformed
+
+        # Penalize tasks if not enough suppressant to significantly reduce fire
+        if agent_fire_reduction_power * agent_suppressant_num < fire_intensities[i]:
+            score *= 0.5  # Reduce priority of tasks outside capability
+
+        task_scores.append(score)
+
+    # Select task with highest score
+    best_task_idx = np.argmax(task_scores)
+    return best_task_idx
+``` 
+
+### Explanation:
+1. **Component Transformations**:
+   - Fire intensity is expanded exponentially (with temperature `intensity_temp`) to prioritize higher-intensity fires.
+   - Distance scores are reduced exponentially (with temperature `distance_temp`) to prioritize closer fires.
+   - Reward weights are treated with higher priority by applying an exponential transformation using `reward_temp`.
+
+2. **Resource Feasibility**:
+   - If the agent’s available suppressant multiplied by their reduction power cannot sufficiently reduce the fire intensity, the task is penalized to avoid wasting resources.
+
+3. **Score Calculation**:
+   - Final score considers priority weights, fire intensity, and proximity, with respective transformations.
+
+4. **Selection**:
+   - The task with the highest score is selected, ensuring the agent focuses on the optimal task.
+
+This policy accounts for critical factors like fire urgency, proximity, reward weights, and agent capability to strategically suppress fires.

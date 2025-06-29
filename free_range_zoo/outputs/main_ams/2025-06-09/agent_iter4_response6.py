@@ -1,0 +1,46 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Improved temperature tuning based on previous performance
+    distance_temp = 1.5  # Attenuate the impact of distance slightly
+    effectiveness_temp = 1.5  # Increase the bias towards suppression capability
+    importance_temp = 2.0  # Stress more on the priority weights for critical fires
+    
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate the Euclidean distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+
+        # Enhanced heuristic for suppressant usage: avoid using full suppressant on low impact extinguishing
+        target_suppressant_use = min(fire_intensity / agent_fire_reduction_power, agent_supressant_num)
+        potential_effectiveness = agent_fire_reduction_power * target_suppressant_use
+        
+        importance_weight = fire_putout_weight[task_index]
+        
+        # Fine-tuned scoring with the revised temperatures
+        task_score = (
+            -np.log(distance + 1) / distance_temp +  # Lessen the distance impact slightly
+            np.log(potential_effectiveness + 1) * importance_temp +  # Granted slightly more importance to effectiveness
+            importance_weight * 10.0 # Accentuating fire importance weights considerably
+        )
+        
+        # Reassessing the task choice based on updated score conditions
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index

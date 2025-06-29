@@ -1,0 +1,48 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Improved temperature tuning based on effectiveness and efficient usage of suppressant
+    distance_temp = 0.8   # Lowering the impact of distance since resource efficiency is crucial
+    effectiveness_temp = 2.0  # Increase the importance of the effectiveness to address fire reduction more precisely
+    importance_temp = 1.5  # Adjust importance weight influence to reflect urgency accurately
+    
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        fire_weight = fire_putout_weight[task_index]
+
+        # Calculate the distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+
+        # Suppression effectiveness considering remaining suppressant
+        if agent_suppressant_num > 0:
+            target_suppressant_use = min(fire_intensity / agent_fire_reduction_power, agent_suppressant_num)
+            potential_effectiveness = agent_fire_reduction_power * target_suppressant_use
+        else:
+            potential_effectiveness = 0
+        
+        # Computing the modified score with adjusted temperatures
+        task_score = (
+            -np.log(distance + 1) / distance_temp +  # Modifying impact of distance
+            np.log(potential_effectiveness + 1) * effectiveness_temp +  # Highlight capability to reduce fires
+            np.log(fire_weight + 1) * importance_temp  # Modify importance weights to focus on critical fires
+        )
+        
+        # Decision logic to select the optimal task to engage with
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index

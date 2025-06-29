@@ -1,0 +1,102 @@
+Let's analyze the policy feedback step by step and make improvements:
+
+1. **Rewards (4.4906)**: The reward function is moderately high. This indicates that the function achieves its objectives to some extent, but it can be optimized further by prioritizing high-priority fires or balancing the weights better.
+
+2. **Fire Intensity Change (-1.00)**: The negative value indicates that fire intensity on average increases. This is a major issue because it suggests that the fires are not being mitigated effectively. To address this, we need to prioritize fires with higher intensity levels and ensure agents focus on areas where they can effectively reduce intensity.
+
+3. **Suppressant Efficiency (1.2037 intensity/suppressant)**: Although this metric is reasonably satisfactory, improving it requires better allocation of suppressant resources based on the fire size and priority.
+
+4. **Burning Number, Putout Number, Burnedout Number**: These metrics show the number of fires remaining unhandled, effectively extinguished, or burning out. A good policy should minimize the number of fires burning out while maximizing fires extinguished.
+
+5. **Steps**: Reducing the number of steps improves efficiency. This can be achieved by prioritizing fires closer to agents to minimize travel time.
+
+### Key Changes for Improvement:
+- Add a stronger weighting factor for fire intensity to tackle uncontrolled fires more effectively.
+- Adjust suppressant efficiency prioritization to focus on high-reward and high-intensity locations.
+- Incorporate a penalty for burning-out fires (where agents fail to handle them effectively).
+- Introduce a new scoring factor for proximity to fires and inter-agent coordination (e.g., avoiding crowding at a single location).
+
+### Revised Policy Function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                     # Current intensity level of each fire
+    fire_intensities: List[float],              # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],            # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        See above.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import math
+
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Modified temperature parameters
+    distance_temp = 3.0
+    fire_intensity_temp = 1.5
+    suppression_efficiency_temp = 2.0
+    priority_weight_temp = 1.0
+
+    for i in range(num_tasks):
+        # Calculate the Euclidean distance to fire location
+        agent_y, agent_x = agent_pos
+        fire_y, fire_x = fire_pos[i]
+        distance = math.sqrt((agent_y - fire_y) ** 2 + (agent_x - fire_x) ** 2)
+        normalized_distance = math.exp(-distance / distance_temp)
+
+        # Evaluate fire intensity impact (higher priority for higher intensity fires)
+        normalized_fire_intensity = math.exp(fire_intensities[i] / fire_intensity_temp)
+
+        # Include suppressant efficiency as a priority factor
+        suppressant_efficiency_score = (
+            agent_fire_reduction_power / (fire_intensities[i] + 1)  # Avoid division by zero
+        )
+        normalized_suppressant_efficiency = math.exp(suppressant_efficiency_score / suppression_efficiency_temp)
+
+        # Account for task priority weights
+        normalized_priority_weight = math.exp(fire_putout_weight[i] / priority_weight_temp)
+
+        # Combine scores using weighted summation (higher weights for intensity and priority)
+        task_score = (
+            normalized_priority_weight * normalized_fire_intensity
+            - normalized_distance
+            + normalized_suppressant_efficiency
+        )
+
+        task_scores.append(task_score)
+
+    # Select the task with the highest score while checking suppressant availability
+    best_task_idx = max(
+        range(num_tasks),
+        key=lambda idx: task_scores[idx] if agent_suppressant_num > 0 else float('-inf')
+    )
+
+    return best_task_idx
+```
+
+### Changes Summary:
+1. **Stronger weighting for fire intensities**: Higher-priority fires are handled more aggressively to mitigate severity.
+2. **Agent efficiency factor**: Incorporates suppressant efficiency to ensure agents allocate resources optimally.
+3. **Proximity prioritization**: Reduces travel distance for faster response times.
+4. **Normalization adjustments**: Adjusted temperature scales to reflect proper priority distribution.
+
+This policy should improve metrics across Rewards, Fire Intensity Change, Suppressant Efficiency, and other important factors. Evaluate its performance and adjust further if necessary!

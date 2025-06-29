@@ -1,0 +1,57 @@
+import numpy as np
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    num_tasks = len(fire_pos)
+    scores = np.zeros(num_tasks)
+
+    for i in range(num_tasks):
+        # Calculate the distance from agent_pos to fire_pos[i]
+        distance_squared = (agent_pos[0] - fire_pos[i][0]) ** 2 + (agent_pos[1] - fire_pos[i][1]) ** 2
+        distance = np.sqrt(distance_squared)
+
+        # Task challenge/scaling factor based on current intensity and difficulty to extinguish
+        challenge_factor = fire_levels[i] + 0.01 * fire_intensities[i]  # 0.01 scales down the raw intensity value
+        
+        # Adaptiveness consideration - agent capabilities vs. fire challenge
+        adaptiveness = agent_fire_reduction_power / (challenge_factor + 0.01)
+
+        # Prioritize putting out high weight, critical spots
+        weighted_importance = fire_putout_weight[i] ** 2
+        
+        # Suppressant distance efficiency
+        if distance > 0:
+            efficiency = agent_suppressant_num / (distance * adaptiveness)
+        else:
+            efficiency = agent_suppressant_num * adaptiveness  # Avoid dividing by zero
+
+        # Calculate score combining all elements
+        scores[i] = weighted_importance * efficiency
+
+        # Include a dialogistic growth differential based on intensity
+        intensity_growth = np.exp(-challenge_factor / 1.5)  # Using 1.5 as a temperature parameter
+        
+        scores[i] *= intensity_growth
+
+    # As scores might be extremely large or small, normalize
+    scores /= np.max(scores)
+    
+    # Choose the task with the highest score
+    selected_task_index = np.argmax(scores)
+    
+    return selected_task_index

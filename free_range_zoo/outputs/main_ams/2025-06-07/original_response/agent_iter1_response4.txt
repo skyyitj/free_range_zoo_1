@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    # Distance prioritization, closer fires have higher priority
+    import numpy as np
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+    # Define the threat levels of fires based on their intensities and current levels
+    threat_levels = [
+        intensity * level
+        for intensity, level in zip(fire_intensities, fire_levels)
+    ]
+
+    # Calculate the potential effectiveness of the agent at each fire
+    suppressant_use_efficiency = [
+        min(intensity, agent_fire_reduction_power * agent_supressant_num) / (1 + distance)
+        for intensity, distance in zip(threat_levels, distances)
+    ]
+
+    weighted_scores = [
+        suppressant_efficiency * weight
+        for suppressant_efficiency, weight in zip(suppressant_use_efficiency, fire_putout_weight)
+    ]
+
+    # Scaling weight and efficiency with an exponential decay to favor closer, more intense, and highly weighted fires
+    scores = []
+    temperature_distance = 2.0
+    temperature_threat = 2.0
+    for idx, (score, distance, threat) in enumerate(zip(weighted_scores, distances, threat_levels)):
+        weighted_distance = np.exp(-distance / temperature_distance)
+        weighted_threat = np.exp(threat / temperature_threat)
+        combined_score = score * weighted_distance * weighted_threat
+        scores.append(combined_score)
+
+    # Select the highest score index
+    selected_task_index = np.argmax(scores)
+    return selected_task_index
+```

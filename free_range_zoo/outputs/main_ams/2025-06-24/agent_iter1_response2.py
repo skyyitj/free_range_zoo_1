@@ -1,0 +1,70 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+    
+    num_tasks = len(fire_pos)
+    
+    # Temperature parameters for normalization
+    distance_temp = 10.0
+    intensity_temp = 1.0
+    weight_temp = 1.0
+    
+    best_score = -np.inf  # To track the best score across tasks
+    best_task_index = -1  # To track the index of the best task
+    
+    for i in range(num_tasks):
+        # Calculate distance from agent to fire location
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+        distance = np.linalg.norm([fire_y - agent_y, fire_x - agent_x])
+        
+        # Normalize distance (lower distance is better)
+        normalized_distance = np.exp(-distance / distance_temp)
+        
+        # Fire intensity (higher intensity is better if agent can suppress it)
+        normalized_intensity = np.exp(fire_intensities[i] / intensity_temp)
+        
+        # Priority weight for this fire task
+        normalized_weight = np.exp(fire_putout_weight[i] / weight_temp)
+        
+        # Compute remaining fire intensity after suppression
+        remaining_fire_intensity = max(
+            fire_intensities[i] - agent_fire_reduction_power * agent_suppressant_num,
+            0
+        )
+        
+        # Avoid fires that could self-extinguish (penalty for high remaining intensity)
+        self_extinguishing_penalty = np.exp(-remaining_fire_intensity / intensity_temp)
+        
+        # Compute the score for this task
+        task_score = (
+            normalized_distance * normalized_intensity * normalized_weight * self_extinguishing_penalty
+        )
+        
+        # Update the best task if this score is higher
+        if task_score > best_score:
+            best_score = task_score
+            best_task_index = i
+    
+    return best_task_index

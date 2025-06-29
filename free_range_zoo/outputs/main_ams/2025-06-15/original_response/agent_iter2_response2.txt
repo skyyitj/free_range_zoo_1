@@ -1,0 +1,107 @@
+Here is the policy function implementation, following the multi-agent wildfire suppression task requirements and guidelines:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        Agent Properties:
+            agent_pos: (y, x) coordinates of the agent
+            agent_fire_reduction_power: Fire suppression capability
+            agent_suppressant_num: Available suppressant resources
+
+        Team Information:
+            other_agents_pos: List of (y, x) positions for all other agents
+                            Shape: (num_agents-1, 2)
+
+        Fire Information:
+            fire_pos: List of (y, x) coordinates for all fires
+                     Shape: (num_tasks, 2)
+            fire_levels: Current fire intensity at each location
+                        Shape: (num_tasks,)
+            fire_intensities: Base difficulty of extinguishing each fire
+                            Shape: (num_tasks,)
+
+        Task Weights:
+            fire_putout_weight: Priority weights for task selection
+                               Shape: (num_tasks,)
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+    
+    # Temperature parameters for transformation of score components
+    fire_level_temperature = 1.5
+    distance_temperature = 2.0
+    weight_temperature = 1.0
+
+    scores = []
+
+    # Iterate over all fire tasks to compute a score for each
+    for i in range(len(fire_pos)):
+        fire_position = fire_pos[i]
+        fire_level = fire_levels[i]
+        fire_intensity = fire_intensities[i]
+        fire_weight = fire_putout_weight[i]
+        
+        # Compute Euclidean distance between agent and fire location
+        distance = np.sqrt((agent_pos[0] - fire_position[0])**2 + (agent_pos[1] - fire_position[1])**2)
+        
+        # Score component: prioritize based on fire intensity and level (scaled with temperature)
+        scaled_fire_level = np.exp(fire_level / fire_level_temperature)
+        
+        # Score component: distance penalty (scaled with temperature)
+        scaled_distance = np.exp(-distance / distance_temperature)
+        
+        # Score component: reward weight for the fire (scaled with temperature)
+        scaled_weight = np.exp(fire_weight / weight_temperature)
+        
+        # Combine scores, factoring resource management
+        if agent_suppressant_num > 0:  # Only consider tasks if resources are available
+            task_score = (scaled_fire_level * scaled_weight * scaled_distance) / (1 + fire_intensity)
+        else:
+            task_score = 0  # No resources, no contribution to this fire task
+
+        scores.append(task_score)
+
+    # Choose the task with the maximum score
+    return int(np.argmax(scores))
+``` 
+
+### Explanation:
+1. **Score Components**:
+    - Fire Level: Fires with higher levels are prioritized using a transformation with temperature.
+    - Distance: Fires closer to the agent are given higher weight, as proximity often results in faster suppression.
+    - Reward Weight: Fires with higher priority weight are preferred for maximum reward.
+
+2. **Transformations**:
+    - Normalization of components uses exponential transformations, combined with temperature parameters for fine-tuning the relative impact of each factor.
+
+3. **Resource Dependency**:
+    - Tasks are ignored if the agent has zero suppressant resources (`agent_suppressant_num`).
+
+4. **Combination Formula**:
+    - Scores for each task are computed as a weighted combination of the normalized components, inversely scaled by fire intensity to reflect difficulty.
+
+5. **Task Selection**:
+    - The task index with the maximum score is chosen (`np.argmax(scores)`).
+
+This function provides a balanced approach between immediate fire suppression, resource management, and reward maximization.

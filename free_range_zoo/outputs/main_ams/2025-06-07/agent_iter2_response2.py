@@ -1,0 +1,47 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+    num_tasks = len(fire_pos)
+
+    # Calculating the euclidean distance between agent's position and each fire's position
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+    max_distance = max(distances) if distances else 1.0
+
+    # Iterate over fires and calculate score for each fire task
+    scores = []
+    for i in range(num_tasks):
+        # Calculate effective suppression potential
+        effective_suppression = min(agent_fire_reduction_power * agent_supressant_num, fire_intensities[i])
+
+        # Normalize inverse of distance (prefer closer fires)
+        normalized_distance = 1.0 - (distances[i] / max_distance)
+
+        # Calculate score considering normalized inverse distance, effective suppression (priority by intensity)
+        # normalized intensity impact, and task weight
+        dist_weight = 5.0  # More emphasis on distance
+        suppress_weight = 0.2  # Reduce single agent's impact on high intensity
+        intensity_importance_factor = np.exp(-fire_intensities[i] / 10.0)  # More severe fires should get priority, normalize intensity impact
+
+        score = (
+            normalized_distance * dist_weight +
+            effective_suppression * suppress_weight +
+            fire_putout_weight[i] * intensity_importance_factor
+        )
+
+        scores.append(score)
+
+    # Agent selects the task with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index

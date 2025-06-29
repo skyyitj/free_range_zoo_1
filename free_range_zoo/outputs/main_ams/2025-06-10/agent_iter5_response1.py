@@ -1,0 +1,46 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks    
+) -> int:
+    import numpy as np
+    
+    # Number of tasks (fires)
+    num_tasks = len(fire_pos)
+    
+    # Evaluate each task
+    scores = np.zeros(num_tasks)
+    temperature_dist = 10.0
+    temperature_intensity = 1.0
+    
+    for i in range(num_tasks):
+        # Calculate distance from agent to fire task
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+
+        # Consider the effective fire intensity after current resources usage
+        expected_fire_intensity = max(0, fire_intensities[i] - agent_fire_reduction_power * agent_suppressant_num)
+        
+        # Weighted scoring: lower distance is better, lower remaining intensity is better, higher weights are better
+        # Normalize and exponentiate (using softmax-like technique) to give a clear decision robust to outliers
+        score_distance = np.exp(-distance / temperature_dist)
+        score_intensity = np.exp(-expected_fire_intensity / temperature_intensity)
+        score_weight = fire_putout_weight[i]  # Directly use the weight
+        
+        # Final score = cumulate all scores (could weight these differently if needed)
+        scores[i] = score_distance * score_intensity * score_weight
+    
+    # Choose the task with the highest score
+    best_task_index = np.argmax(scores)
+    return best_task_index

@@ -1,0 +1,62 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Adjusted temperature constants based on performance metric feedback
+    distance_temp = 0.1  # Further increase sensitivity to distance
+    importance_temp = 2.0  # Adjust the importance of task weights
+    remaining_resources_temp = 1.5  # Emphasize protecting remaining resources
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate Euclidean distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+
+        # Calculate potential effectiveness and conserving resources
+        target_suppressant_use = min((fire_intensity / agent_fire_reduction_power) if agent_fire_reduction_power > 0 else float('inf'),
+                                     agent_supressant_num)
+        
+        # Encourage using suppressants more effectively to maximize reduction
+        potential_effectiveness = agent_fire_reduction_power * target_suppressant_use
+        
+        # Remaining suppressants after potential contribution to the task
+        remaining_suppressants = agent_supressant_num - target_suppressant_use
+        
+        importance_weight = fire_putout_weight[task_index]
+        
+        # Calculate task score
+        task_score = (
+            -np.exp(distance / distance_temp) +  # Exponentially scaled distance impact
+            np.log(potential_effectiveness + 1) * 2.0 +  # Log-scale to reduce generated score range
+            np.log(remaining_suppressants + 1) * remaining_resources_temp +  # Incentive for resource conservation
+            np.exp(importance_weight) * importance_temp  # Exp-scale for task importance impact
+        )
+        
+        # Updating best task based on score
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```
+
+Revised Adjustments:
+1. The `distance_temp` has been reduced even more to exacerbate the effect of distance. Agents are encouraged to act on closer fires to reduce transit time loss and react more quickly.
+2. Added a new component, `remaining_resources_temp`, with logarithmic emphasis to promote suppressant reservation for ongoing demands.
+3. Adjusted the strategy to balance the use of suppressants more effectively in light of the feedback on suppressant efficiency and fire intensity reduction.
+4. The constants are calibrated to balance impactful decision factors while maintaining a focus on strategic extinguishment and resource conservation.
+
+This policy function should provide more optimized fire-fighting decisions based on updated guidelines for collective decision-making. Further testing is advised to gauge improvements and additional refinements.

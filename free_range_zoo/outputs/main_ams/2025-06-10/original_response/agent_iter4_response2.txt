@@ -1,0 +1,51 @@
+```python
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    
+    # Penalty temperature to scale down distances
+    distance_temperature = 0.01
+    # Intensity temperature to scale down the effect of fire intensity
+    intensity_temperature = 0.1
+    
+    best_task_index = 0
+    highest_score = -float('inf')
+    
+    for i in range(num_tasks):
+        # Automatically ensure that only available suppressant is considered
+        effective_suppressant = min(agent_suppressant_num, agent_fire_reduction_power / (fire_intensities[i] + 1e-5))
+        
+        # Calculate the distance between the agent and the fire
+        distance = np.hypot(fire_pos[i][0] - agent_pos[0], fire_pos[i][1] - agent_pos[1])
+        
+        # Calculate score components:
+        #   - A higher `fire_putout_weight` should contribute positively
+        #   - A lower `distance` should contribute positively, hence negative of adjusted distance
+        #   - A lower `fire_intensity` should contribute positively
+        # The suppression ability is the inverse of the fire intensity based on agent's effective power
+        suppression_ability = effective_suppressant / fire_levels[i]
+        
+        # Calculate the score for the task
+        score = (
+            fire_putout_weight[i] +
+            -np.exp(distance * distance_temperature) +
+            np.exp(suppression_ability * intensity_temperature)
+        )
+        
+        # Choose the task with the highest score
+        if score > highest_score:
+            highest_score = score
+            best_task_index = i
+            
+    return best_task_index
+```

@@ -1,0 +1,43 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances between the agent and each fire location
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Calculate the inverse of distances to prioritize closer fires, using a small epsilon to avoid div/0
+    epsilon = 1e-6
+    inv_distances = 1 / (np.array(distances) + epsilon)
+
+    # Potential impact considering the agent's fire reduction capabilities and the remaining suppressant
+    available_impact = agent_fire_reduction_power * agent_supressant_num
+
+    # Fire extenuation potential normalized by the fire's intensity
+    extenuation_potentials = available_impact / np.array(fire_intensities)
+
+    # Normalize inv_distances to enhance relative differences
+    if np.std(inv_distances) != 0:
+        inv_distances = (inv_distances - np.mean(inv_distances)) / np.std(inv_distances)
+
+    # Normalize extenuation_potentials to enhance relative differences
+    if np.std(extenuation_potentials) != 0:
+        extenuation_potentials = (extenuation_potentials - np.mean(extenuation_potentials)) / np.std(extenuation_potentials)
+
+    # Calculate the weighted scores for fires incorporating distance, potential impact, and task priority weights
+    scores = inv_distances * extenuation_potentials * np.array(fire_putout_weight)
+
+    # Select the fire with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index

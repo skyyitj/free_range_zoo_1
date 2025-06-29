@@ -1,0 +1,56 @@
+import math
+from typing import Tuple, List
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],               
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    best_score = float('-inf')
+
+    # Constants for score calculation
+    distance_influence_temp = 2.0
+
+    for task_index in range(num_tasks):
+        fire_position = fire_pos[task_index]
+        fire_intensity = fire_intensities[task_index]
+        fire_level = fire_levels[task_index]
+        priority_weight = fire_putout_weight[task_index]
+        
+        # Calculate the Euclidean distance from the agent to the fire
+        distance = math.sqrt((fire_position[0] - agent_pos[0])**2 + (fire_position[1] - agent_pos[1])**2)
+
+        # Normalize and apply negative exponential to promote closer fires
+        normalized_distance_score = math.exp(-distance / distance_influence_temp)
+        
+        # We might also want to consider the agent's firefighting effectiveness
+        effectiveness_score = agent_fire_reduction_power * agent_supressant_num
+        
+        # Calculate final score using a formula built from normalized distance,
+        # effectiveness, and the task's fire intensity and its priority weight.
+        # Here, higher priority weights and current fire intensity imply urgency.
+        if agent_suppressant_num >= fire_intensity / agent_fire_reduction_power:
+            task_score = (normalized_distance_score * effectiveness_score * priority_weight) / (1 + fire_intensity)
+        else:
+            task_score = -1  # If the fire can't be suppressed with current suppressants, ignore this task
+        
+        if task_score > best_score:
+            best_score = task_score
+            best_task_index = task_index
+
+    # Return the index of the fire position that has the highest score (optimal task)
+    return best_task_index

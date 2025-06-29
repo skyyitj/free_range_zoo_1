@@ -1,0 +1,46 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Modified temperature parameters after evaluation of previous results
+    distance_temp = 2.5  # Increase significance of distance in task scoring
+    effectiveness_temp = 1.2  # Increase impact of potential effectiveness
+    importance_temp = 2.0  # Make priority weights more significant
+    
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate Euclidean distance to each fire task
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+        # Adjust suppressant usage based on remaining fire levels and resource availability
+        possible_suppressant_use = min(agent_supressant_num, fire_intensity / agent_fire_reduction_power)
+        if possible_suppressant_use < 1:
+            continue  # Skip if suppressant capacity is ineffective
+        
+        potential_effectiveness = agent_fire_reduction_power * possible_suppressant_use
+        importance_weight = fire_putout_weight[task_index]
+
+        # Revised task score incorporating adjusted weights and capitals
+        task_score = (
+            -np.log(distance + 1) / distance_temp +  
+            np.log(potential_effectiveness + 1) / effectiveness_temp + 
+            importance_weight * importance_temp  # Adjust importance factor dynamically
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index

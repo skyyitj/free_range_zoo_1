@@ -1,0 +1,55 @@
+```python
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,         
+
+    other_agents_pos: List[Tuple[float, float]], 
+
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                    
+    fire_intensities: List[float],               
+
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)  # Number of tasks is the number of fire locations
+    if num_tasks == 0:
+        return -1  # No fire tasks available
+
+    task_scores = np.zeros(num_tasks)  # Initializing a score array for each task
+
+    # Temperature parameters for transformations
+    distance_temp = 0.5
+    intensity_temp = 0.3
+    level_temp = 0.5
+
+    for i in range(num_tasks):
+        # Calculate square of the Euclidean distance to each fire task from this agent's position
+        y_dist = (agent_pos[0] - fire_pos[i][0])**2
+        x_dist = (agent_pos[1] - fire_pos[i][1])**2
+        distance_to_fire = np.sqrt(y_dist + x_dist)
+
+        # Reduction potential considers agent's fire reduction power, available suppressant, and fire intensity
+        potential_reduction = agent_suppressant_num * agent_fire_reduction_power / (fire_intensities[i] * (1 + fire_levels[i]))
+        
+        # Negative exponential of the distance to reduce impact of farther tasks
+        distance_score = np.exp(-distance_to_fire / distance_temp)
+
+        # Positive impact of potential reduction (more reduction is better)
+        reduction_potential_score = np.exp(potential_reduction / intensity_temp)
+
+        # Inverse of fire level to prioritize high level fires which are critical
+        fire_level_score = np.exp(-fire_levels[i] / level_temp)
+
+        # Priority weight derived directly uses positive values
+        priority_score = fire_putout_weight[i]
+
+        # Calculate the composite score
+        task_scores[i] = (distance_score * reduction_potential_score * fire_level_score * priority_score)
+
+    # Pick the task with the highest score as it is the most optimal for this agent
+    selected_task = np.argmax(task_scores)
+    return selected_task
+```

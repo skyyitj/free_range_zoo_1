@@ -1,0 +1,85 @@
+Here is an implementation of the `single_agent_policy` function based on the task rules and considerations:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],               # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import math
+
+    def calculate_distance(pos1, pos2):
+        """Calculate Euclidean distance between two points."""
+        return math.sqrt((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2)
+
+    # Parameters for weighting and normalization (temperature values)
+    distance_temperature = 5.0
+    intensity_temperature = 2.0
+    reward_weight_temperature = 1.0
+
+    best_score = float('-inf')
+    best_task_idx = -1
+
+    for task_idx in range(len(fire_pos)):
+        # Calculate estimated remaining fire intensity after suppression
+        estimated_remaining_fire = fire_intensities[task_idx] - (
+            agent_fire_reduction_power * agent_suppressant_num
+        )
+
+        # Calculate distance to the fire location
+        distance = calculate_distance(agent_pos, fire_pos[task_idx])
+
+        # Only consider tasks that are achievable with the agent's resources
+        if estimated_remaining_fire >= 0 and agent_suppressant_num <= 0:
+            continue
+
+        # Normalize and weight the components of the score
+        normalized_distance = math.exp(-distance / distance_temperature)
+        normalized_intensity = math.exp(fire_intensities[task_idx] / intensity_temperature)
+        normalized_reward_weight = fire_putout_weight[task_idx] / reward_weight_temperature
+
+        # Define the combined score for this task
+        task_score = (
+            normalized_reward_weight
+            + normalized_intensity
+            - normalized_distance
+        )
+
+        # Select task with highest score
+        if task_score > best_score:
+            best_score = task_score
+            best_task_idx = task_idx
+
+    return best_task_idx
+``` 
+
+### Explanation of the Logic:
+1. **Distance Calculation**: The function calculates the Euclidean distance between the agent and each fire location. Distance is negated (via exponential decay) because tasks closer to the agent should be prioritized.
+
+2. **Fire Intensity and Remaining Fire**: The function estimates the fire's remaining intensity after suppression. Tasks that cannot be fully extinguished by the agent's resources are deprioritized.
+
+3. **Reward Weights**: The function calculates the weighted priority for each task based on the `fire_putout_weight`. Higher weights indicate more critical fires.
+
+4. **Normalization**: The function applies exponential normalization to distance, intensity, and priority weights using temperature parameters. This ensures that no single factor dominates the score.
+
+5. **Score Calculation**: A score is computed for each fire task by combining weighted priorities, intensity factors, and distance penalties.
+
+6. **Optimal Task Selection**: The function selects the task with the highest score.
+
+### Customization:
+You can adjust the temperature parameters (`distance_temperature`, `intensity_temperature`, `reward_weight_temperature`) to adapt the prioritization to specific simulation dynamics.

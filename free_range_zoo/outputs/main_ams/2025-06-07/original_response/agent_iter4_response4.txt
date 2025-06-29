@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Setup the task data properties
+    num_tasks = len(fire_pos)
+
+    # Initialize a scores array for decision making
+    scores = np.zeros(num_tasks)
+
+    # Various tuning hyperparameters
+    distance_weight_temperature = 0.1
+    suppressant_efficiency_temperature = 2.0
+
+    # Evaluate each fire task
+    for i in range(num_tasks):
+        # Calculate distance of the agent to each fire
+        distance = np.sqrt((fire_pos[i][0] - agent_pos[0]) ** 2 + (fire_pos[i][1] - agent_pos[1]) ** 2)
+        normalized_distance = np.exp(-distance_weight_temperature * distance)
+
+        # Compute how effectively the agent can suppress the current fire
+        expected_intensity_reduction = agent_supressant_num * agent_fire_reduction_power
+        suppression_efficiency = expected_intensity_reduction / fire_intensities[i]
+        normalized_suppression = np.tanh(suppressant_efficiency_temperature * suppression_efficiency)
+
+        # Generating score based on the information and conditions
+        score = fire_putout_weight[i] * (normalized_distance + normalized_suppression)
+
+        if fire_levels[i] - expected_intensity_reduction <= 0:
+            # Bonus for extinguishing the fire completely
+            score *= 2.5
+
+        scores[i] = score
+
+    # Decide on the task with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index
+```

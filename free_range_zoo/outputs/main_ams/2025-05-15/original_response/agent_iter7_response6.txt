@@ -1,0 +1,62 @@
+Given the current evaluation metrics, we can identify that while the agents are moderately efficient in suppressing the fire intensity and gaining rewards, there's room for improvement in terms of reward optimization and suppression efficiency. The metrics also indicate that although the suppressant use is conservative, the efficiency in terms of the ratio of suppression to suppressant use could be better.
+
+**Specific Observations and Adjustments:**
+1. **Improving Efficiency and Rewards**: The observed moderate reward level suggests that while agents prioritize valuable tasks, they may not be optimizing for both proximity and task value. Further refinement in balancing distance, task criticality, and reward potential could enhance performance.
+2. **Suppression Efficiency**: This needs improvement. We should consider the potential reduction in fire intensity more dynamically based on the amount of suppressant used and the proximity of agents to fire sites.
+
+**Enhanced Policy Suggestions:**
+- **Prioritizing High-Value Tasks**: Adjust reward factor and suppression potential calculation to sharply distinguish high-value fires.
+- **Distance Consideration**: Enhance the weighting of proximity to prioritize closer fires and conserve suppressants.
+- **Dynamic Response Adjustments**: Calibrate the factors dynamically, adjusting the temperature values based on the urgency and available suppressants.
+
+Let's refine the policy function:
+
+```python
+import numpy as np
+from typing import List, Tuple
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+
+    # Adjusted parameters for better responsiveness
+    distance_temp = 0.02  # Increase priority for nearby fires
+    intensity_temp = 0.5  # Decrease focus a bit on high-intensity promoting efficiency
+    suppressant_factor = 100.0  # Sharply emphasize suppressant conservation
+    reward_boost = 2.5  # More weighting on higher reward tasks
+
+    suppressant_potential = np.exp(-suppressant_factor * (1 - (agent_suppressant_num / 100)))
+
+    for i in range(num_tasks):
+        distance = np.sqrt((agent_pos[0] - fire_pos[i][0])**2 + (agent_pos[1] - fire_pos[i][1])**2)
+        normalized_distance = np.exp(-distance_temp * distance)
+        
+        intensity_score = fire_levels[i] * (1 + fire_intensities[i])
+        normalized_intensity = np.exp(-intensity_temp * intensity_score)
+
+        # Revise score computation
+        score = (fire_putout_weight[i] * reward_boost * normalized_distance + normalized_intensity) * suppressant_potential
+        
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+
+**Key Changes:**
+- **Increased Reward Boost**: Prioritize high-value targets more sharply.
+- **Adjusted Parameter for Distance**: Prioritizes closer fires to save on movement and suppressant.
+- **Suppression Efficiency**: Better consideration of suppressant availability and fire intensity.
+
+This revised function aims to better match the operational needs by emphasizing critical fires and effective resource use while aiming to maximize rewards more effectively. This should improve several metrics, ensuring better overall performance.

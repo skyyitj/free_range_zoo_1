@@ -1,0 +1,55 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters for normalizing components
+    distance_temp = 1.0
+    intensity_temp = 1.0
+    reward_temp = 1.0
+
+    for i in range(num_tasks):
+        fire_y, fire_x = fire_pos[i]
+        distance = np.linalg.norm([agent_pos[0] - fire_y, agent_pos[1] - fire_x])
+        
+        # Calculate fire intensity after agent suppression
+        reduced_intensity = fire_intensities[i] - (agent_fire_reduction_power * agent_suppressant_num)
+        # Penalize tasks with fires that could potentially self-extinguish
+        self_extinguish_penalty = 10.0 if fire_levels[i] > 10 else 0.0
+
+        # Transform components with respective temperature parameters
+        distance_score = np.exp(-distance / distance_temp)
+        intensity_score = np.exp(-reduced_intensity / intensity_temp)
+        reward_score = np.exp(fire_putout_weight[i] / reward_temp)
+
+        # Combine components into a total score
+        total_score = reward_score * intensity_score * distance_score - self_extinguish_penalty
+        task_scores.append(total_score)
+
+    # Select the task with the highest score
+    optimal_task_index = np.argmax(task_scores)
+
+    return optimal_task_index

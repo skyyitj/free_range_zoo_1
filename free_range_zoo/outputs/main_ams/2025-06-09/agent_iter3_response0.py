@@ -1,0 +1,48 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    # Adjusted temperature values
+    distance_temp = 2.0  
+    effectiveness_temp = 0.2  
+    importance_temp = 0.3  
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate distance
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+        
+        # Calculate possible effective action of agent
+        possible_suppressant_use = min(agent_suppressant_num, fire_intensity / agent_fire_reduction_power)
+        
+        if possible_suppressant_use < 1:  # If too less suppressant is used to make a significant difference, skip
+            continue
+
+        effectiveness = agent_fire_reduction_power * possible_suppressant_use
+        importance_weight = fire_putout_weight[task_index]
+
+        distance_score = -np.exp(-distance / distance_temp)
+        effectiveness_score = np.exp(effectiveness / effectiveness_temp)
+        importance_score = np.exp(importance_weight / importance_temp)
+        
+        # New policy computation weights alterations
+        task_score = distance_score + 2 * effectiveness_score + 3 * importance_score
+
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index

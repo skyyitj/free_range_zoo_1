@@ -1,0 +1,52 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import numpy as np
+    
+    num_fires = len(fire_pos)
+    selected_task_idx = 0
+    max_score = float('-inf')
+
+    # Introduce temperature parameters
+    distance_temp = 0.1
+    intensity_temp = 1.0
+    reward_temp = 0.5
+    level_temp = 0.5
+
+    # Position of the agent unpacked for easier use
+    ay, ax = agent_pos
+
+    for i in range(num_fires):
+        fy, fx = fire_pos[i]
+        distance = np.sqrt((fy - ay) ** 2 + (fx - ax) ** 2)
+        distance_penalty = np.exp(-distance * distance_temp)
+        
+        intensity_penalty = np.exp(-fire_intensities[i] * intensity_temp)
+        
+        reward_contribution = np.exp(fire_putout_weight[i] * reward_temp)
+        
+        level_effectiveness = np.exp(-fire_levels[i] * level_temp)
+
+        # Calculate the score for assigning this fire to the agent
+        score = distance_penalty * intensity_penalty * reward_contribution * level_effectiveness
+        
+        # Update the selected task index if the score for the current fire is higher than previously found
+        if score > max_score:
+            max_score = score
+            selected_task_idx = i
+
+    return selected_task_idx

@@ -1,0 +1,107 @@
+Here is the optimized policy function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Input Parameters:
+        Agent Properties:
+            agent_pos: (y, x) coordinates of the agent
+            agent_fire_reduction_power: Fire suppression capability
+            agent_suppressant_num: Available suppressant resources
+
+        Team Information:
+            other_agents_pos: List of (y, x) positions for all other agents
+                            Shape: (num_agents-1, 2)
+
+        Fire Information:
+            fire_pos: List of (y, x) coordinates for all fires
+                     Shape: (num_tasks, 2)
+            fire_levels: Current fire intensity at each location
+                        Shape: (num_tasks,)
+            fire_intensities: Base difficulty of extinguishing each fire
+                            Shape: (num_tasks,)
+
+        Task Weights:
+            fire_putout_weight: Priority weights for task selection
+                               Shape: (num_tasks,)
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    import numpy as np
+
+    # === Temperature Parameters for Normalization ===
+    intensity_temperature = 2.0
+    weight_temperature = 1.5
+    distance_temperature = 3.0
+
+    # === Helper Function: Calculate Euclidean Distance ===
+    def euclidean_distance(pos1, pos2):
+        return np.sqrt((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2)
+
+    # === Number of Tasks ===
+    num_tasks = len(fire_pos)
+
+    # === Priority Score Computation ===
+    scores = []
+    for i in range(num_tasks):
+        # Fire Intensity Impact (Higher intensity means higher priority)
+        intensity_component = np.exp(fire_intensities[i] / intensity_temperature)
+
+        # Reward Weight Impact (Higher weight means higher priority)
+        weight_component = np.exp(fire_putout_weight[i] / weight_temperature)
+        
+        # Distance Impact (Closer fires are preferred)
+        distance = euclidean_distance(agent_pos, fire_pos[i])
+        distance_component = 1 / np.exp(distance / distance_temperature)
+
+        # Normalized Score = Intensity Impact * Weight Impact * Distance Impact
+        score = intensity_component * weight_component * distance_component
+
+        # Append score to list
+        scores.append(score)
+
+    # === Select Task with Highest Score ===
+    best_task = int(np.argmax(scores))
+
+    return best_task
+```
+
+
+### Overview of Key Design Elements:
+1. **Task Scoring:**
+   - Combines fire intensity (`fire_intensities`), priority weight (`fire_putout_weight`), and distance as key factors.
+   - Each component is normalized using exponential transformations with separate temperature parameters (`intensity_temperature`, `weight_temperature`, and `distance_temperature`).
+
+2. **Normalization through Temperature:**
+   - Exponential transformation ensures scores remain comparable even if they have different scales.
+   - Temperature parameters adjust sensitivity to changes in intensity, weight, and distance.
+
+3. **Distance Prioritization:**
+   - Fires closer to the agent are preferred through the distance component.
+   - This helps minimize resource consumption due to travel.
+
+4. **Final Selection:**
+   - The task with the highest score is chosen (`np.argmax(scores)`).
+
+### Benefits:
+- Balances immediate suppression, reward maximization, and proximity considerations.
+- Ensures efficient resource allocation, preventing fire spread while considering suppressant limitations.

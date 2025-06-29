@@ -1,0 +1,57 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+    
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters for normalization
+    distance_temp = 1.0
+    intensity_temp = 2.0
+    weight_temp = 1.0
+
+    for i in range(num_tasks):
+        # Calculate distance from agent to fire location
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+        distance = np.sqrt((fire_y - agent_y) ** 2 + (fire_x - agent_x) ** 2)
+
+        # Normalize distance (lower distance yields higher priority)
+        distance_score = np.exp(-distance_temp * distance)
+
+        # Fire intensity and suppression potential
+        fire_intensity = fire_intensities[i]
+        suppression_potential = min(agent_suppressant_num, fire_intensity / agent_fire_reduction_power)
+        suppression_score = np.exp(-intensity_temp * suppression_potential)
+
+        # Task prioritization weight
+        weight_score = np.exp(weight_temp * fire_putout_weight[i])
+
+        # Combine scores (weighted by factors)
+        total_score = distance_score * suppression_score * weight_score
+        task_scores.append(total_score)
+
+    # Select the task with the highest score
+    optimal_task = int(np.argmax(task_scores))
+
+    return optimal_task
+```

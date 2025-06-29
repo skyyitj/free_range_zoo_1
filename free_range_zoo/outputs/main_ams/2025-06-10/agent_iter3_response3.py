@@ -1,0 +1,53 @@
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    import numpy as np
+    
+    num_tasks = len(fire_pos)
+    max_score = -float('inf')
+    selected_task = 0
+    
+    # Temperature parameters for different score components
+    weight_temperature = 1.0
+    difficulty_temperature = 10.0
+    closeness_temperature = 0.1
+    
+    if agent_suppressant_num <= 0:
+        return None
+        
+    # Loop through each task to evaluate its suitability
+    for i in range(num_tasks):
+        task_y, task_x = fire_pos[i]
+        
+        # Weight component: importance of putting out this particular fire
+        weight_score = fire_putout_weight[i]
+        
+        # Urgency component: based on the intensity of the fire
+        urgency_score = fire_levels[i] * fire_intensities[i]
+        
+        # Difficulty component: how challenging it is to tackle this fire
+        suppression_potential = agent_fire_reduction_power * agent_suppressant_num
+        difficulty_score = np.exp(-difficulty_temperature * (suppression_potential - urgency_score))
+        
+        # Closeness component: how far is the agent from the fire
+        y_diff = agent_pos[0] - task_y
+        x_diff = agent_pos[1] - task_x
+        distance = np.sqrt(y_diff**2 + x_diff**2)
+        closeness_score = np.exp(-closeness_temperature * distance)
+        
+        # Calculate a combined score for making the decision
+        total_score = (weight_score * np.exp(1 / weight_temperature) + difficulty_score + closeness_score)
+        
+        # Select task with the maximum score
+        if total_score > max_score:
+            max_score = total_score
+            selected_task = i
+
+    return selected_task

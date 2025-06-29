@@ -1,0 +1,53 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+    
+    # ===== Utility Functions and Parameter Definitions =====
+    # Distance calculator
+    def distance(point1, point2):
+        return np.sqrt((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2)
+    
+    # Reward vs. Risk estimation for task performance scale coefficient
+    task_temperature = 0.1
+    suppressant_temperature = 10.0  # Emphasizing suppressant conservation
+    
+    # Getting number of fires to iterate through
+    num_tasks = len(fire_pos)
+    
+    # ===== Vectorized Computation =====
+    # Distances from agent to each fire
+    agent_distances = np.array([distance(agent_pos, fire) for fire in fire_pos])
+    
+    # Prioritize fires based on distance (closer fires have higher priority)
+    inv_distances = 1 / (agent_distances + 1e-3)  # adding a small epsilon to prevent division by zero
+
+    # Consideration of the available suppressant and the fire reduction potential
+    fire_reduction_potentials = agent_suppressant_num * agent_fire_reduction_power / np.array(fire_intensities)
+    
+    # Compute the suppressant required to just extinguish each fire,
+    # and compare it with available supressant
+    suppressant_usage_factor = fire_reduction_potentials / np.clip(agent_suppressant_num, 1e-3, None)
+    
+    # Effective use of suppressants (suppressant economy)
+    effectiveness_scores = np.exp((suppressant_usage_factor - 1) / suppressant_temperature)
+
+    # Compute priority based on the fire put out weights adjusted by the distance
+    priority_scores = np.array(fire_putout_weight) * inv_distances
+    
+    # Overall scoring including all factors: distance, effectiveness, and priority weights
+    scores = priority_scores * effectiveness_scores
+
+    # Best action to take: maximize the score
+    selected_task_index = np.argmax(scores)
+    
+    return selected_task_index
+```

@@ -1,0 +1,148 @@
+Let's carefully analyze the metrics step by step to identify the weaknesses and propose improvements:
+
+---
+
+### Metrics Analysis
+
+1. **Average Rewards (6.2000):**
+   - While acceptable, the goal is to maximize rewards. This can be achieved by better prioritizing tasks with higher reward weights and ensuring agents extinguish fires that provide maximum benefit.
+
+2. **Average Fire Intensity Change (-0.88):**
+   - This negative value indicates that fires are growing in intensity over time, which is a key issue. Agents need to suppress fires faster and more efficiently. We need to boost prioritization of high-intensity fires.
+
+3. **Average Suppressant Efficiency (1.0520):**
+   - This metric is moderately good but can be improved further. Agents should allocate suppressant resources more judiciously, focusing on fires that can be extinguished with minimal resource expenditure.
+
+4. **Burning Number:**
+   - Reduce the number of unhandled fires by ensuring optimal task distribution among agents.
+
+5. **Putout Number:**
+   - This metric can be improved by clearing fires that are close to extinguishment first and by focusing suppression efforts effectively.
+
+6. **Burnedout Number:**
+   - Fires burning out without agent intervention result in penalties. Agents must prioritize fires at risk of burning out—those with exceedingly high levels.
+
+7. **Steps:**
+   - Reduce the number of steps by emphasizing efficiency in fire suppression. Target fires whose suppression is quicker and impactful.
+
+---
+
+### Observations and Proposed Improvements
+
+1. **Reward Weight Integration:**
+   - Prioritize fires that contribute the highest rewards while balancing the fire containment goal.
+
+2. **Fire Intensity Prioritization:**
+   - Fires with high intensity should be prioritized to prevent their spread and growth.
+
+3. **Suppressant Optimization:**
+   - Improve efficiency of suppressant usage by considering fires where resources will have maximum impact.
+
+4. **Burnout Penalty:**
+   - Fires at risk of burning out must be penalized highly to reduce penalties.
+
+5. **Proximity Score Refinement:**
+   - Nearby fires should still be factored in, but their significance should be moderated relative to reward and intensity.
+
+---
+
+### Revised Policy Function
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import math
+
+    # Temperature parameters for policy tuning
+    distance_temperature = 7  # Moderate focus on proximity
+    intensity_temperature = 6  # Strong focus on high-intensity fires
+    suppressant_temperature = 4  # Balance suppressant allocation
+    burnout_penalty_temperature = 5  # Prevent penalties from fires burning out
+    reward_temperature = 4  # Emphasize the importance of rewards
+
+    scores = []
+    for i in range(len(fire_pos)):
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+
+        # --- Calculate distance score ---
+        distance = math.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+        distance_score = math.exp(-distance / distance_temperature)
+
+        # --- Calculate fire intensity score ---
+        intensity_score = math.exp(fire_intensities[i] / intensity_temperature)
+
+        # --- Calculate suppressant efficiency score ---
+        required_suppressant = fire_intensities[i] / agent_fire_reduction_power
+        suppressant_score = (
+            math.exp(-required_suppressant / suppressant_temperature)
+            if agent_suppressant_num >= required_suppressant else 0
+        )
+
+        # --- Calculate burnout penalty score ---
+        burnout_penalty = math.exp(fire_levels[i] / burnout_penalty_temperature)
+
+        # --- Calculate reward weight score ---
+        reward_score = math.exp(fire_putout_weight[i] / reward_temperature)
+
+        # --- Combine scores ---
+        total_score = (
+            reward_score *
+            intensity_score *
+            suppressant_score /
+            (burnout_penalty + distance_score + 1e-6)  # Prevent overly favoring distant fires
+        )
+        scores.append(total_score)
+
+    # Choose the task with the highest score
+    return int(scores.index(max(scores)))
+```
+
+---
+
+### Key Improvements
+
+1. **Reward Weight Scaling:**
+   - `reward_score` is now emphasized further using `reward_temperature` to prioritize fires that maximize accumulated rewards.
+
+2. **Intensity Scoring:**
+   - Increased the weight of `intensity_score` using `intensity_temperature` to focus on high-intensity fires for effective suppression.
+
+3. **Burnout Penalty:**
+   - Fires with extremely high levels are penalized heavily via `burnout_penalty_temperature`.
+
+4. **Suppressant Efficiency:**
+   - Adjusted the suppressant allocation for better resource management.
+
+5. **Proximity Moderation:**
+   - Ensured `distance_score` contributes to agent task selection without overly favoring nearby fires over critical ones.
+
+---
+
+### Expected Outcomes
+
+1. **Rewards:** Higher average rewards due to improved prioritization of high-reward fires. 
+2. **Fire Intensity Change:** Positive or less negative change indicating better fire mitigation.
+3. **Suppressant Efficiency:** Enhanced efficiency as suppressant is utilized effectively.
+4. **Burnedout Number:** Reduced penalties from burned-out fires by focusing on critical fires.
+5. **Steps:** Lower steps due to prioritization of impactful fires and more efficient suppression.
+
+This newly revised policy function aims to balance the task goals while addressing the weaknesses identified in the feedback. Metrics are expected to improve iteratively with this approach.

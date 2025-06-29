@@ -1,0 +1,61 @@
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+
+    # Define temperature parameters for score normalization
+    distance_temperature = 5.0          # Controls impact of distance normalization
+    intensity_temperature = 10.0        # Controls impact of fire intensity normalization
+    weight_temperature = 1.0            # Controls impact of reward weight normalization
+
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    for i in range(num_tasks):
+        # Calculate distance to fire location
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+        distance = ((fire_y - agent_y) ** 2 + (fire_x - agent_x) ** 2) ** 0.5
+
+        # Normalize distance (smaller is preferred, using np.exp for normalization)
+        distance_score = np.exp(-distance / distance_temperature)
+
+        # Normalize fire intensity (larger is preferred, using np.exp for normalization)
+        intensity_score = np.exp(fire_intensities[i] / intensity_temperature)
+
+        # Normalize fire-putout weight (already provided as value, using np.exp)
+        weight_score = np.exp(fire_putout_weight[i] / weight_temperature)
+
+        # Evaluate suppressant effectiveness
+        reduction_effectiveness = agent_suppressant_num * agent_fire_reduction_power
+        remaining_fire = fire_intensities[i] - reduction_effectiveness
+        suppressant_score = max(remaining_fire, 0)  # Penalize tasks with remaining fire
+
+        # Combine all scores
+        total_score = distance_score + intensity_score + weight_score - suppressant_score
+        
+        task_scores.append(total_score)
+
+    # Choose the task with the highest score
+    best_task_index = int(np.argmax(task_scores))
+    
+    return best_task_index
+```

@@ -1,0 +1,38 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances between the agent and each fire location
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances so closer fires are more attractive
+    max_distance = np.max(distances) if np.max(distances) else 1  # Avoid division by zero
+    normalized_distances = 1 - (np.array(distances) / max_distance)
+
+    # Evaluate the potential impact of agent's action on each fire
+    potential_impact = np.array(fire_levels) - agent_fire_reduction_power * agent_supressant_num / np.array(fire_intensities)
+    positive_impacts_indexes = potential_impact < 0
+    potential_impact[positive_impacts_indexes] = 0
+
+    # Normalize the potential impact
+    max_impact = np.max(potential_impact) if np.max(potential_impact) else 1
+    normalized_impact = 1 - (potential_impact / max_impact)
+
+    # Calculate combined scores with consideration of task weights
+    scores = normalized_distances * normalized_impact * np.array(fire_putout_weight)
+
+    # Selecting the fire with the maximum combined score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index

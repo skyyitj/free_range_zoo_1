@@ -1,0 +1,54 @@
+import math
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    num_tasks = len(fire_intensities)
+    best_task = None
+    highest_score = -float('inf')
+
+    # Constants for scoring formula
+    distance_temperature = 0.5
+    intensity_temperature = 1.5
+    resources_temperature = 1.0
+    
+    for task_idx in range(num_tasks):
+        task_pos = fire_pos[task_idx]
+        task_intensity = fire_intensities[task_idx]
+
+        # Compute distance from agent to the fire
+        distance = math.sqrt((agent_pos[0] - task_pos[0])**2 + (agent_pos[1] - task_pos[1])**2)
+        distance_score = math.exp(-distance / distance_temperature)
+        
+        # Compute intensity score
+        intensity_score = math.exp(-task_intensity / intensity_temperature)
+
+        # Estimate resource consumption and score
+        if agent_suppressant_num > 0 and agent_fire_reduction_power > 0:
+            possible_actions = min(agent_suppressant_num, task_intensity / agent_fire_reduction_power)
+            resource_score = math.exp(possible_actions / resources_temperature)
+        else:
+            resource_score = 0
+        
+        # Weighted score based on task priority
+        weighted_score = fire_putout_weight[task_idx] * (distance_score + intensity_score + resource_score)
+
+        if weighted_score > highest_score:
+            highest_score = weighted_score
+            best_task = task_idx
+    
+    return best_task if best_task is not None else 0

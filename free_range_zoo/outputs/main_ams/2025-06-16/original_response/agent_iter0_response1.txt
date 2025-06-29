@@ -1,0 +1,78 @@
+Here's an expertly designed policy function for assigning firefighting tasks to agents in the wildfire simulation. The policy function evaluates fire suppression tasks based on proximity, fire intensity, reward weight, and agent capability to assign the most optimal task for each agent, while adhering to the constraints and dynamics outlined in the task rules:
+
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+    fire_putout_weight: List[float],             
+) -> int:
+    import numpy as np
+    
+    # Temperature parameters for score normalization
+    distance_temp = 10.0
+    intensity_temp = 0.5
+    weight_temp = 1.0
+    
+    # Calculate scores for each fire task
+    best_task_index = -1
+    best_task_score = -float("inf")
+    
+    for i in range(len(fire_pos)):
+        # Task information
+        fire_position = fire_pos[i]
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        reward_weight = fire_putout_weight[i]
+
+        # Distance score (closer fires are prioritized)
+        distance = np.linalg.norm(np.array(agent_pos) - np.array(fire_position))
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Intensity score (higher intensity fires are prioritized)
+        intensity_score = np.exp(fire_intensity / intensity_temp)
+
+        # Reward weight score (higher priority weights result in higher scores)
+        weight_score = np.exp(reward_weight / weight_temp)
+        
+        # Feasibility: Can the agent contribute meaningfully to firefighting?
+        effective_suppressant = min(agent_suppressant_num, fire_intensity / agent_fire_reduction_power)
+        effectiveness_score = effective_suppressant * agent_fire_reduction_power
+
+        # Aggregate score
+        task_score = distance_score + intensity_score + weight_score + effectiveness_score
+
+        # Select the best task based on the score
+        if task_score > best_task_score:
+            best_task_score = task_score
+            best_task_index = i
+
+    return best_task_index
+```
+
+### Explanation:
+1. **Key Considerations Addressed:**
+   - **Distance:** Fires closer to the agent are favored by assigning a higher score using an exponentially decaying factor (`distance_score`).
+   - **Fire Intensity:** Fires with greater intensity are more dangerous, so they are prioritized using a positive exponential transformation of intensity (`intensity_score`).
+   - **Task Priority Weights:** Tasks with higher reward weights are directly favored in the scoring system (`weight_score`).
+   - **Effectiveness:** The agent's fire reduction power and the available suppressant are factored into the decision-making (`effectiveness_score`).
+
+2. **Temperature Parameters:**
+   - `distance_temp`, `intensity_temp`, and `weight_temp` control the sensitivity of the exponential transformations for scores. They serve as tunable hyperparameters.
+
+3. **Feasibility Check:**
+   - The function ensures that the agent is assigned to tasks where it can contribute significantly to suppressing the fire without wasting suppressant.
+
+4. **Optimal Task Selection:**
+   - The loop calculates a score for each fire task, and the task with the highest score is chosen for the agent.
+
+### Strengths:
+- Balances proximity, intensity, and task priority weights effectively.
+- Incorporates agent capability to conserve resources and ensure meaningful contributions.
+- Scalable to varying numbers of agents, fires, and grid configurations.
+
+This policy function is designed to be robust, allowing agents to act adaptively and collaboratively in suppressing wildfires while considering crucial constraints and dynamics of the grid environment.

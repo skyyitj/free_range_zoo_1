@@ -1,0 +1,38 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+    # Distance can heavily influence decision, adjust temperature for normalization.
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+    
+    # Score each fire taking into account distance, intensity, and fire putout weight.
+    scores = []
+    for idx, (dist, intensity, level, weight) in enumerate(zip(distances, fire_intensities, fire_levels, fire_putout_weight)):
+        normalized_distance = np.tanh(3.0 / (dist + 0.1))  # Changed temperature for distance to affect less on very distant fires
+        potential_suppression = min(intensity, agent_fire_reduction_power * agent_supressant_num)
+        normalized_suppression = potential_suppression / max(fire_intensities)  # Normalize by maximum intensity for relative suppression power
+
+        # Evaluate effective use of suppressants factoring in the intensity and the remaining suppressant.
+        suppressant_efficiency = (normalized_suppression * intensity) / (agent_supressant_num + 0.1)  # Added small constant to avoid division by zero
+
+        # Combine scores with influence from distance, prioritization weight, and suppressant efficiency
+        combined_score = (weight * normalized_distance * suppressant_efficiency)
+        
+        # Overall score accounts for contributing factors with an emphasis on suppressant efficiency
+        effective_score = combined_score * np.exp(suppressant_efficiency / 2.0)  # Adjusted the temperature to emphasize suppressant efficiency.
+        
+        scores.append(effective_score)
+
+    # Choose the task with the maximum score provided by our scoring system
+    selected_task_index = np.argmax(scores)
+    return selected_task_index

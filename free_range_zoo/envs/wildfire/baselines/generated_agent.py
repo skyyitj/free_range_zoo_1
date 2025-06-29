@@ -6,6 +6,8 @@ from free_range_zoo.utils.agent import Agent
 from math import sqrt
 from typing import Tuple, List
 import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
 
 class GenerateAgent(Agent):
     """Agent that always fights the strongest available fire."""
@@ -21,7 +23,7 @@ class GenerateAgent(Agent):
         """
         super().__init__(agent_name, parallel_envs)
         self.actions = torch.zeros((parallel_envs, 2), dtype=torch.int32)
-
+        self.attack_range = 1
         # 从配置中获取场地尺寸
         if 'configuration' in kwargs:
             config = kwargs['configuration']
@@ -88,13 +90,17 @@ class GenerateAgent(Agent):
 
                 # 确保坐标在有效范围内
                 if 0 <= fire_x < self.grid_width and 0 <= fire_y < self.grid_height:
+                    # 计算火焰与agent的距离
                     if [i, 0] in action_space.spaces[0].enumerate():
-                        # 将火点的索引存储到valid_action_space中
-                        index_map[len(fire_pos_new)] = i
-                        fire_pos_new.append(fire_pos[i])
-                        fire_levels_new.append(fire_levels[i])
-                        fire_intensities_new.append(fire_intensities[i])
-                        fire_rewards_weights.append(float(self.reward_config[fire_y, fire_x]))
+                        # distance = abs(fire_x - agent_pos[1]) + abs(fire_y - agent_pos[0])  # 曼哈顿距离
+                        # if distance <= self.attack_range:  # 判断是否在攻击范围内
+                        # if [i, 0] in action_space.spaces[0].enumerate():
+                            # 将火点的索引存储到valid_action_space中
+                            index_map[len(fire_pos_new)] = i
+                            fire_pos_new.append(fire_pos[i])
+                            fire_levels_new.append(fire_levels[i])
+                            fire_intensities_new.append(fire_intensities[i])
+                            fire_rewards_weights.append(float(self.reward_config[fire_y, fire_x]))
                 else:
                     print(f"Warning: Fire point {i} out of bounds: x={fire_x}, y={fire_y}")
             assert len(fire_rewards_weights) == len(fire_pos_new) == len(fire_levels_new) == len(fire_intensities_new)
@@ -140,26 +146,22 @@ class GenerateAgent(Agent):
                 self.argmax_store[batch][element] = self.fires[batch][element]
                 
 
-import numpy as np
-from typing import List, Tuple
-from scipy.spatial import distance
-
 def single_agent_policy(
     # === Agent Properties ===
-    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
-    agent_fire_reduction_power: float,           # How much fire the agent can reduce
-    agent_suppressant_num: float,                # Amount of fire suppressant available
+    agent_pos: Tuple[float, float],              # Position of the agent (y, x)
+    agent_fire_reduction_power: float,           # Fire suppression power
+    agent_suppressant_num: float,                # Fire suppressant resources
 
     # === Team Information ===
     other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
 
     # === Fire Task Information ===
-    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_pos: List[Tuple[float, float]],         # Positions of all fires [(y1, x1), (y2, x2), ...]
     fire_levels: List[int],                      # Current intensity level of each fire
-    fire_intensities: List[float],               # Current intensity value of each fire task
+    fire_intensities: List[float],               # Current intensity value for each fire
 
     # === Task Prioritization ===
-    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+    fire_putout_weight: List[float],             # Priority weights for suppression tasks
 ) -> int:
 
     num_tasks = len(fire_levels)
@@ -168,23 +170,23 @@ def single_agent_policy(
     can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
 
     # Temperatures
-    putout_temperature = 0.2
-    level_temperature = 0.1
-    intensity_temperature = 0.25 
-    distance_temperature = 0.1 
+    level_temperature = 0.35
+    intensity_temperature = 0.15
+    distance_temperature = 0.20 # Increasing temperature to prioritize closer fires
 
     for task in range(num_tasks):
 
-        # calculate the euclidean distance between fire and agent
+        # Calculate Euclidean distance between fire and agent
         fire_distance = distance.euclidean(agent_pos, fire_pos[task])
 
-        # scoring function based on the weight of the fire, distance to the fire
-        # intensity of the fire and suppressants left with the agent
+        # Adjusting the calculation of fire level weight.
+        # Previously, it seemed that the agent was too averse to high level fires.
+        # Now, the agent should be more willing to attack such fires.
         scores[task] = (
-            (fire_putout_weight[task]) * np.exp(-(fire_levels[task] / can_put_out_fire) * putout_temperature) +
+            np.exp(-(fire_levels[task] / can_put_out_fire) * level_temperature) +
             can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
             fire_distance * np.exp(fire_distance * distance_temperature)
-        )
+        ) * fire_putout_weight[task] * np.sqrt(agent_suppressant_num)
 
     # Return task index with maximum score
     max_score_task = np.argmax(scores)

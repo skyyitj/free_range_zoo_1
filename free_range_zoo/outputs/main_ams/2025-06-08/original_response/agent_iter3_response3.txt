@@ -1,0 +1,132 @@
+Let's analyze the policy feedback step by step based on the results provided.
+
+### Feedback Analysis
+
+1. **Average Rewards (6.2000):**
+   - This value is moderately high, indicating progress in task completion. However, further improvements can focus on prioritizing high-reward fires effectively to push this value higher.
+
+2. **Average Fire Intensity Change (-0.88):**
+   - A negative value implies fires are spreading or intensifying on average. This is a significant issue that demonstrates the policy's inability to contain and suppress fires effectively. Prioritization of high-intensity fires and improving suppressant allocation should help address this.
+
+3. **Average Suppressant Efficiency (1.0520):**
+   - While moderately acceptable, this value shows room for improvement by better allocating suppressant resources to maximize the reduction in fire intensity.
+
+4. **Other Metrics:**
+   - **Burning Number:** Fires left unhandled should be reduced by improving task prioritization.
+   - **Putout Number:** Increasing extinguishment by handling fires close to cooldown.
+   - **Burnedout Number:** Lower this by targeting fires at risk of burning out.
+   - **Steps:** Focus on faster suppression by prioritizing crucial fires.
+
+---
+
+### Key Improvements
+
+1. **Improve Fire Suppression:** Assign higher priority to fires with high intensity to minimize their spread and lower average fire intensity change.
+2. **Optimize Resource Management:** Allocate suppressant more efficiently to fires that yield maximum suppression per resource unit.
+3. **Reward Scaling:** Adjust focus on maximizing reward accumulation strategically.
+4. **Fix High Burnedout Numbers:** Penalize fires nearing burnout to prevent negative impacts.
+
+---
+
+### Revised Policy Function
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import math
+
+    # Temperature parameters for policy tuning
+    reward_temperature = 3.5  # Emphasize high-reward fires
+    intensity_temperature = 4  # Prioritize high-intensity fires
+    suppressant_temperature = 2.5  # Balance suppressant efficiency
+    burnout_temperature = 3.5  # Penalize fires at risk of burning out
+    distance_temperature = 9  # Slight focus on proximity
+
+    scores = []
+    for i in range(len(fire_pos)):
+        fire_y, fire_x = fire_pos[i]
+        agent_y, agent_x = agent_pos
+
+        # --- Reward Component ---
+        reward_score = math.exp(fire_putout_weight[i] / reward_temperature)
+
+        # --- Fire Intensity Component ---
+        intensity_score = math.exp(fire_intensities[i] / intensity_temperature)
+
+        # --- Resource Efficiency Component ---
+        required_suppressant = fire_intensities[i] / agent_fire_reduction_power
+        suppressant_score = (
+            math.exp(-required_suppressant / suppressant_temperature)
+            if agent_suppressant_num >= required_suppressant else 0
+        )
+
+        # --- Burnout Risk Component ---
+        burnout_penalty = math.exp(fire_levels[i] / burnout_temperature)
+
+        # --- Distance Component ---
+        distance = math.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+        distance_score = math.exp(-distance / distance_temperature)
+
+        # --- Combine Scores ---
+        total_score = (
+            reward_score *
+            intensity_score *
+            suppressant_score *
+            distance_score /
+            (burnout_penalty + 1e-6)  # Prevent division by zero
+        )
+        scores.append(total_score)
+
+    # Choose the task with the highest score
+    return int(scores.index(max(scores)))
+```
+
+---
+
+### Key Updates
+
+1. **Reward Component:**
+   - Adjusted `reward_temperature` slightly to place higher emphasis on maximizing rewards.
+
+2. **Fire Intensity Component:**
+   - Improved prioritization of high-intensity fires by reducing `intensity_temperature` slightly to better manage spreading fires.
+
+3. **Resource Efficiency:**
+   - Fine-tuned `suppressant_temperature` for better allocation efficiency.
+
+4. **Burnout Penalty:**
+   - Explicitly emphasized the penalty for fires nearing burnout by slightly lowering the `burnout_temperature`.
+
+5. **Distance Component:**
+   - Incorporated a slight focus on proximity with newly adjusted `distance_temperature` to handle reachable fires more effectively.
+
+---
+
+### Expected Outcomes
+
+1. **Higher Rewards:** Focusing on high-reward fires should increase the average reward metric.
+2. **Fire Intensity Change:** Better suppression of high-intensity fires should minimize spreading, making this value approach zero or become positive.
+3. **Improved Suppressant Efficiency:** Efficient use of suppressant resources will yield a higher efficiency metric.
+4. **Reduced Burning/Burnedout Numbers:** Improved prioritization should address unhandled fires and fires nearing burnout.
+5. **Increased Putout Number:** Focusing on fires close to suppression should increase extinguished fires.
+6. **Reduced Steps:** Efficient handling of fires should reduce the number of steps needed.
+
+This revised policy should yield better results across all metrics while maintaining a balanced approach to multiple objectives.

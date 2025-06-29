@@ -1,0 +1,87 @@
+Here is a policy function designed to optimally assign firefighting tasks to agents based on the provided rules and objectives:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity levels of each fire
+    fire_intensities: List[float],               # Current intensity values of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+
+    # Constants for transformation/normalization (customizable temperatures)
+    distance_temp = 5.0
+    intensity_temp = 10.0
+    reward_temp = 5.0
+
+    # Initialize the scores for all fire tasks
+    scores = []
+
+    for i in range(len(fire_pos)):
+        # Extract fire task properties
+        fire_y, fire_x = fire_pos[i]
+        fire_intensity = fire_intensities[i]
+        fire_level = fire_levels[i]
+        priority_weight = fire_putout_weight[i]
+
+        # Step 1: Calculate the distance from the agent to the fire
+        agent_y, agent_x = agent_pos
+        distance = np.sqrt((fire_y - agent_y)**2 + (fire_x - agent_x)**2)
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Step 2: Factor in fire intensity and current level
+        intensity_score = np.exp(fire_intensity / intensity_temp)
+
+        # Step 3: Include priority weight as a measure of importance
+        reward_score = np.exp(priority_weight / reward_temp)
+
+        # Step 4: Calculate resource effectiveness (fire reduction and suppression)
+        suppressant_effect = min(agent_fire_reduction_power * agent_suppressant_num, fire_intensity)
+        suppressant_score = suppressant_effect / fire_intensity if fire_intensity > 0 else 1.0
+
+        # Step 5: Avoid high-intensity fires that may self-extinguish
+        self_extinguish_penalty = 1.0 if fire_level < 10 else 0.1  # Arbitrary threshold for self-extinguish
+
+        # Combine all scores into a weighted final score for the task
+        score = (
+            distance_score * 0.3 +  # Weight for proximity
+            intensity_score * 0.3 +  # Weight for intensity
+            reward_score * 0.2 +  # Weight for reward importance
+            suppressant_score * 0.2  # Weight for suppressant effectiveness
+        ) * self_extinguish_penalty
+
+        scores.append(score)
+
+    # Step 6: Select the task with the highest score
+    best_task_index = np.argmax(scores)
+    return best_task_index
+``` 
+
+### Explanation:
+1. **Distance Consideration**: Tasks closer to the agent are given a higher score using an exponential decay function. This ensures agents prioritize nearby fires for faster response times.
+   
+2. **Fire Intensity**: Fires with higher intensity levels are weighted more heavily to prevent spread and control major fires.
+
+3. **Priority Weight**: The reward weights are integrated into the score to align agent decisions with strategic priorities.
+
+4. **Resource Efficiency**: The suppressing effectiveness is calculated based on the agent's fire reduction power and available suppressant. Tasks are prioritized where resource usage is optimal.
+
+5. **Self-Extinguish Avoidance**: Fires nearing self-extinguishing thresholds are penalized to prevent unnecessary suppressant consumption or penalties.
+
+6. **Score Normalization**: All scoring components are transformed using exponential functions with adjustable temperatures. This allows fine-tuning the sensitivity of the scoring system.
+
+By combining these factors, the policy ensures intelligent and adaptive task assignments for wildfire suppression.

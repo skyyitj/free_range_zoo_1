@@ -1,0 +1,47 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+
+    suppress_to_intensity_ratio_temp = 0.3  # Tempering how suppressant efficiency is evaluated
+    distance_temp = 12.0  # Modified to consider far tasks less unfavorable
+    effectiveness_temp = 0.1  # Stronger emphasis on potential effectiveness
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        distance = np.sqrt((agent_pos[0] - fire[0]) ** 2 + (agent_pos[1] - fire[1]) ** 2)
+        
+        possible_suppressant_use = min(agent_supressant_num, fire_intensity / agent_fire_reduction_power)
+        potential_effectiveness = agent_fire_reduction_power * possible_suppressant_use
+        remaining_intensity = fire_intensity - potential_effectiveness
+
+        importance_weight = fire_putout_weight[task_index]
+
+        adjusted_suppressant_efficiency = potential_effectiveness / (
+            1 + distance_temp * distance + suppress_to_intensity_ratio_temp * (remaining_intensity + 0.1)
+        )
+
+        task_score = (
+            np.log1p(adjusted_supressant_efficiency / effectiveness_temp) +
+            np.log1p(importance_weight * (1 / (1 + distance)))
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```

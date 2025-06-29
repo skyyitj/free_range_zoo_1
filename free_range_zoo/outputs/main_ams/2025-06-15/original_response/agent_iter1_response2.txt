@@ -1,0 +1,94 @@
+To address the task effectively, we design a policy based on a scoring mechanism that incorporates critical factors such as fire intensity, distance, resource constraints, and reward weights. The function will calculate a score for each fire task and select the task with the maximum score. 
+
+Here is the implementation:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import numpy as np
+    
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Distance scaling temperature
+    distance_temp = 1.0
+    intensity_temp = 1.5
+    reward_temp = 1.0
+
+    for i in range(num_tasks):
+        # Distance between agent and fire task
+        agent_y, agent_x = agent_pos
+        fire_y, fire_x = fire_pos[i]
+        distance = np.sqrt((agent_y - fire_y) ** 2 + (agent_x - fire_x) ** 2)
+
+        # Distance penalty (lower distance increases preference)
+        distance_factor = np.exp(-distance / distance_temp)
+
+        # Fire intensity factor (higher intensity increases preference)
+        intensity_factor = np.exp(fire_intensities[i] / intensity_temp)
+
+        # Reward weight factor (higher weight increases preference)
+        reward_factor = np.exp(fire_putout_weight[i] / reward_temp)
+
+        # Estimate fire suppression outcome
+        expected_reduction = agent_fire_reduction_power * agent_suppressant_num
+        remaining_fire = max(0, fire_intensities[i] - expected_reduction)
+
+        # Remaining fire penalty (fires closer to 0 are preferable)
+        remaining_fire_penalty = 1 / (remaining_fire + 1e-6)
+
+        # Calculate task score as a weighted combination of factors
+        task_score = reward_factor * intensity_factor * distance_factor * remaining_fire_penalty
+        task_scores.append(task_score)
+
+    # Select the task with the maximum score
+    return int(np.argmax(task_scores))
+``` 
+
+### Explanation of Key Components
+1. **Distance Factor**:
+   - Tasks closer to the agent are prioritized by penalizing distances using an exponential decay.
+   - `distance_factor = np.exp(-distance / distance_temp)`
+
+2. **Intensity Factor**:
+   - Tasks with higher fire intensity are prioritized because they may spread to neighboring cells more rapidly.
+   - `intensity_factor = np.exp(fire_intensities[i] / intensity_temp)`
+
+3. **Reward Weight Factor**:
+   - Tasks with higher reward weights are prioritized to ensure alignment with task prioritization guidelines.
+   - `reward_factor = np.exp(fire_putout_weight[i] / reward_temp)`
+
+4. **Remaining Fire Penalty**:
+   - Tasks where the agent's suppression strength can effectively reduce the fire are preferred.
+   - Tasks resulting in little or no remaining fire are scored higher.
+   - `remaining_fire_penalty = 1 / (remaining_fire + 1e-6)`
+
+5. **Weighted Combination**:
+   - Scores for each task are calculated as a product of the factors above.
+   - `task_score = reward_factor * intensity_factor * distance_factor * remaining_fire_penalty`
+
+6. **Task Selection**:
+   - The task with the highest score is selected.
+   - `return int(np.argmax(task_scores))`
+
+### Tunable Parameters
+- **`distance_temp, intensity_temp, reward_temp`**:
+  - These control the sensitivity of each factor (distance, intensity, and reward weight) in the score calculation.
+  - Adjusting these values allows fine-tuning of the policy for different grid configurations and scenarios.
+
+This approach provides a balance between fighting critical fires and conserving resources while maximizing adherence to reward priorities.

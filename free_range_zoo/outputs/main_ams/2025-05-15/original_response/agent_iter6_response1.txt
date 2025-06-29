@@ -1,0 +1,70 @@
+To improve the policy based on the evaluation results, let's think step by step through each metric and what changes could potentially enhance performance:
+
+1. **Rewards**: Although the Average Rewards are positive, there's room to increase this by prioritizing higher reward tasks even more strongly within our scoring mechanism.
+
+2. **Fire Intensity Change**: The negative intensity change indicates that the agents are reducing the fire intensity. However, enhancements can be made to make this reduction more significant.
+
+3. **Used Suppressant**: We need a better balance, potentially further penalizing the excessive use of suppressants or optimizing its efficiency.
+
+4. **Suppressant Efficiency**: The suppressant efficiency is a crucial metric given the resource constraints. Boosting this can lead to better use of available suppressants.
+
+5. **Burning Number, Putout Number, and Burnedout Number**: These metrics can be optimized through better decision-making focused on the most threatening fires and efficient suppressant usage.
+
+Here's the revised policy, taking these into account:
+
+```python
+import numpy as np
+from typing import Tuple, List
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_supressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_score = float('-inf')
+    selected_task_index = -1
+    
+    # Tuning these parameters based on metric results
+    distance_temperature = 0.002  # Further precision-focused
+    intensity_temperature = 0.01  # Higher sensitivity to intensity changes
+    suppressant_efficiency_scale = 30.0  # More conservation of suppressant 
+    reduction_power_scale = 2  # More emphasis on the agent's fire reduction power
+    
+    suppressant_remain_scale = np.exp(-suppressant_efficiency_scale * (1 - (agent_suppressant_num / 10)))
+    
+    for i in range(num_tasks):
+        (fy, fx) = fire_pos[i]
+        distance = np.sqrt((agent_pos[0] - fy)**2 + (agent_pos[1] - fx)**2)
+        norm_distance = np.exp(-distance_temperature * distance)
+        
+        intensity = fire_intensities[i] * fire_levels[i]
+        norm_intensity = np.exp(-intensity_temperature * intensity)
+        
+        score = (
+            fire_putout_weight[i] *  # Emphasis on the reward of the task
+            norm_distance *  # Nearby fires prioritized
+            (agent_fire_reduction_power * reduction_power_scale / (1 + intensity)) *  # Effectiveness of agent
+            np.log1p(fire_levels[i]) *  # Non-linear benefits from reducing higher levels
+            suppressant_remain_scale *  # Preservation of suppressants
+            norm_intensity  # Effective on handling intense fires
+        )
+        
+        if score > best_task_score:
+            best_task_score = score
+            selected_task_index = i
+
+    return selected_task_index
+```
+
+### Changes Explained:
+
+- **Distance Temperature**: Decreased slightly for more fine-tuning regarding proximity.
+- **Intensity Temperature**: Increased, making the agent even more responsive to higher intensity fires, aiming to achieve greater fire intensity reductions.
+- **Suppressant Efficiency Scale**: Increased to enhance suppressant preservation.
+- **Reduction Power Scale**: Introducing a scale factor to emphasize the impact of the agent's fire reduction capabilities, enhancing both rewards and fire mitigation.

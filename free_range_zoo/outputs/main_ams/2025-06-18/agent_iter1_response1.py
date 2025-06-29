@@ -1,0 +1,61 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    import numpy as np
+
+    # Initialize task scores
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    # Temperature parameters for score components
+    distance_temp = 10.0
+    intensity_temp = 5.0
+    weight_temp = 1.0
+
+    for i in range(num_tasks):
+        # Task properties
+        fire_position = fire_pos[i]
+        fire_level = fire_levels[i]
+        fire_intensity = fire_intensities[i]
+        reward_weight = fire_putout_weight[i]
+
+        # Calculate distance to fire (Euclidean distance)
+        distance_to_fire = np.sqrt((agent_pos[0] - fire_position[0])**2 + (agent_pos[1] - fire_position[1])**2)
+
+        # Normalize and transform score components
+        transformed_distance = np.exp(-distance_to_fire / distance_temp)
+        transformed_intensity = np.exp(fire_intensity / intensity_temp)  # Higher intensity means higher priority
+        transformed_weight = reward_weight / weight_temp
+
+        # Resource consideration: Ensure suppressant is sufficient
+        suppressant_available = agent_suppressant_num - fire_intensity * agent_fire_reduction_power
+        if suppressant_available < 0:
+            resource_penalty = 1.0  # Penalize tasks we lack resources for
+        else:
+            resource_penalty = 0.0  # No penalty if resources are sufficient
+
+        # Compute task score
+        task_score = (
+            transformed_weight * transformed_intensity * transformed_distance
+            - fire_level  # Penalize fire levels directly to prevent escalation
+            - resource_penalty
+        )
+        task_scores.append(task_score)
+
+    # Select the task with the highest score
+    optimal_task_index = int(np.argmax(task_scores))
+    return optimal_task_index

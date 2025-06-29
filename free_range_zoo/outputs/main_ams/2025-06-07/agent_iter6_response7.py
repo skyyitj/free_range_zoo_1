@@ -1,0 +1,53 @@
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_suppressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Constants to factor transform scales
+    distance_temperature = 1.0
+    effectiveness_temperature = 1.0
+    conservation_temperature = 1.0
+    desperation_temperature = 1.0
+
+    # Calculate distances of the agent to each fire
+    distances = np.sqrt((np.array(fire_pos)[:,0] - agent_pos[0])**2 + (np.array(fire_pos)[:,1] - agent_pos[1])**2)
+    
+    # Normalize distances to ensure close fires are prioritized
+    normalized_distances = 1 / (distances + 0.001)  # Prevent division by zero by adding a small constant
+
+    # Calculate how the agent can directly reduce the intensity based on its capabilities
+    current_suppressant_effect = agent_fire_reduction_power * agent_suppressant_num
+
+    # Simulate the potential remaining fire intensity after the agent's intervention
+    potential_remaining_intensity = np.array(fire_levels) - (current_suppressant_effect / np.array(fire_intensities))
+
+    # Fires expected to be put out completely should be prioritized
+    eliminated_fire_indicator = 1.0 / (1.0 + np.exp(effectiveness_temperature * (potential_remaining_intensity)))
+    
+    # Assess the urgency based on fire intensity, high intensity fires should be targeted
+    intensity_urgency = np.exp(desperation_temperature * (np.array(fire_levels) / np.max(fire_levels)))
+
+    # Fire put out importance weights incorporated directly
+    weighted_importance = np.array(fire_putout_weight)
+
+    # Strategic resource conservation emphasis
+    suppressant_conservation = 1.0 - np.exp(-conservation_temperature * (agent_suppressant_num / np.sum(fire_levels)))
+
+    # Score calculation that combines all components:
+    scores = (
+        normalized_distances +
+        eliminated_fire_indicator +
+        intensity_urgency * weighted_importance * suppressant_conservation
+    )
+
+    # Select the fire with the maximum score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index

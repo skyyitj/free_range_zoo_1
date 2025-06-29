@@ -1,0 +1,55 @@
+import numpy as np
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+    
+    # Normalize distance measure with the maximum possible distance in the environment
+    max_possible_distance = np.sqrt((max(map(lambda f: f[0], fire_pos)) - min(map(lambda f: f[0], fire_pos)))**2 + 
+                                    (max(map(lambda f: f[1], fire_pos)) - min(map(lambda f: f[1], fire_pos)))**2)
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        
+        # Calculate distance from agent to fire
+        distance = np.sqrt((agent_pos[0] - fire[0]) ** 2 + (agent_pos[1] - fire[1]) ** 2)
+        normalized_distance = distance / max_possible_distance
+    
+        # Potential suppression effect similar to before but considering agent's remaining suppressant
+        # Ensure that the reduction does not exceed available suppressants
+        if agent_suppressant_num > 0 and agent_fire_reduction_power > 0:
+            potential_suppress_effect = min(agent_suppressant_num, fire_intensity / agent_fire_reduction_power)
+        else:
+            potential_suppress_effect = 0
+        
+        importance_weight = fire_putout_weight[task_index]
+        
+        # Temperatures set by analyzing results and trials. Adjust these to smoothen the effect of each component
+        distance_temp = 4.0
+        effect_temp = 2.5
+        weight_temp = 1.0
+        
+        # Recomposed task score with balanced focus between distance, effect and importance weight
+        task_score = (
+            -np.exp(normalized_distance * distance_temp) + # Normalized distance dampened
+            np.exp(potential_suppress_effect / effect_temp) +
+            np.exp(importance_weight / weight_temp)
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+    
+    return best_task_index

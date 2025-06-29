@@ -1,0 +1,40 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    # Calculate distances between the agent and each fire location
+    import numpy as np
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances so closer fires are more attractive
+    normalized_distances = np.exp(-np.array(distances) / 2.0)  # Adjust the temperature to 2.0 to prioritize proximity more
+    
+    # Boost scores by reduction potential adjusted for available suppressant
+    effective_suppression = [
+        min(intensity, agent_fire_reduction_power * suppressant_use) / agent_supressant_num
+        for intensity, suppressant_use in zip(fire_intensities, np.ones(len(fire_intensities)))
+    ]
+    effective_normalized_suppression = np.array(effective_suppression) / max(effective_suppression)
+
+    # Apply weights that account for fire priority
+    weighted_suppressions = effective_normalized_suppression * np.array(fire_putout_weight)
+
+    # Factor in current fire levels to avoid focusing too much on minor fires when nearby major ones exist
+    fire_level_weighting = np.array(fire_levels) / np.max(fire_levels)
+    adjusted_scores = normalized_distances * weighted_suppressions * fire_level_weighting
+
+    # Selecting the fire with the maximum score - more refined selection with fire level consideration
+    selected_task_index = np.argmax(adjusted_scores)
+
+    return selected_task_index
+```

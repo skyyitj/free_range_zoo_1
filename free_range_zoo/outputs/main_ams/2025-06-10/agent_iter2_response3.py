@@ -1,0 +1,57 @@
+from typing import List, Tuple
+import math
+
+def single_agent_policy(
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+    other_agents_pos: List[Tuple[float, float]],
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    # Initialize temperatures for different scoring components
+    distance_temp = 1.0
+    fire_level_temp = 0.3
+    fire_intensity_temp = 0.5
+    suppressant_temp = 0.2
+    reward_weight_temp = 2.0
+    
+    num_tasks = len(fire_pos)
+    best_task = -1
+    highest_score = -float('inf')
+    
+    # Function to calculate Euclidean distance
+    def calculate_distance(pos1, pos2):
+        return math.sqrt((pos1[0] - pos2[0])**2 + (pos1[1] - pos2[1])**2)
+    
+    for task_index in range(num_tasks):
+        # Calculate how much this agent could reduce the fire
+        potential_fire_reduction = agent_fire_reduction_power * agent_suppressant_num
+
+        # Calculate task scores based on multiple considerations
+        distance = calculate_distance(agent_pos, fire_pos[task_index])
+        fire_level = fire_levels[task_index]
+        fire_intensity = fire_intensities[task_index]
+        reward_weight = fire_putout_weight[task_index]
+        
+        # Effectiveness of suppression to fire level
+        effectiveness = min(potential_fire_reduction, fire_intensity)
+        
+        # Score components transformed with exponential function to highlight importance
+        score_distance = math.exp(-distance * distance_temp)
+        score_fire_level = math.exp(-fire_level * fire_level_temp)
+        score_fire_intensity = math.exp(-fire_intensity * fire_intensity_temp)
+        score_effectiveness = math.exp(effectiveness * suppressant_temp)
+        score_reward_weight = math.exp(reward_weight * reward_weight_temp)
+        
+        # Aggregate score for the current task
+        score = score_distance * score_fire_level * score_fire_intensity * score_effectiveness * score_reward_weight
+        
+        # Select task with the highest score
+        if score > highest_score:
+            highest_score = score
+            best_task = task_index
+    
+    return best_task

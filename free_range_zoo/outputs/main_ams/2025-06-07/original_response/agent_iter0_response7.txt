@@ -1,0 +1,58 @@
+```python
+import numpy as np
+
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float,
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]],
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],
+    fire_levels: List[int],
+    fire_intensities: List[float],
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],
+) -> int:
+    num_tasks = len(fire_pos)
+
+    # A temperature parameter to manage scaling of scores
+    distance_temp = 1.0
+    intensity_temp = 0.1
+    resource_temp = 0.5
+
+    best_score = -np.inf
+    best_task = 0
+    
+    for task_index in range(num_tasks):
+        fire_y, fire_x = fire_pos[task_index]
+
+        # Euclidean distance from agent to the fire
+        distance = np.sqrt((fire_y - agent_pos[0])**2 + (fire_x - agent_pos[1])**2)
+        
+        # Importance due to the level and intensity of the fire
+        intensity_score = (fire_levels[task_index] + fire_intensities[task_index])
+
+        # Using weights to determine task priority
+        task_weight = fire_putout_weight[task_index]
+
+        # Resource availablity impact
+        resource_impact = agent_suppressant_num - agent_fire_reduction_power
+
+        # Compute a combined score considering all factors
+        score = (np.exp(-distance / distance_temp) + 
+                 np.exp(intensity_score / intensity_temp) + 
+                 task_weight +
+                 np.exp(-resource_impact / resource_temp))
+
+        # Select the task with the highest score
+        if score > best_score:
+            best_score = score
+            best_task = task_index
+
+    return best_task
+```

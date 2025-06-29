@@ -1,0 +1,48 @@
+```python
+def single_agent_policy(
+    agent_pos,
+    agent_fire_reduction_power,
+    agent_supressant_num,
+    other_agents_pos,
+    fire_pos,
+    fire_levels,
+    fire_intensities,
+    fire_putout_weight
+):
+    import numpy as np
+
+    # Calculate distances of the agent to each fire - distances should be minimized
+    distances = [
+        np.sqrt((f_pos[0] - agent_pos[0]) ** 2 + (f_pos[1] - agent_pos[1]) ** 2)
+        for f_pos in fire_pos
+    ]
+
+    # Normalize distances to deprioritize distant fires (higher is worse)
+    max_distance = max(distances) if distances else 1
+    normalized_distances = np.array(distances) / max_distance
+
+    # Inverse to prioritize: Closer fires should have lower scores in terms of distance
+    inverse_normalized_distances = 1 / (normalized_distances + 0.001)
+
+    # Potential effectivity: Measure of how effective the agent's available suppressant can reduce the fire
+    potential_effectivity = agent_supressant_num * agent_fire_reduction_power / np.array(fire_intensities)
+    # Normalize the effectivity to prioritize higher effectiveness
+    effectivity_score = potential_effectivity / np.max(potential_effectivity)
+
+    # Desperation score based on current intensity and suppressant capability
+    remaining_fire_intensity = np.array(fire_levels) - potential_effectivity
+    desperation_score = np.clip(remaining_fire_intensity, 0, None)
+
+    # Priority based on fire put-out weight (higher is better)
+    normalized_weights = np.array(fire_putout_weight) / np.max(fire_putout_weight)
+
+    # Score combining all factors:
+    # High effectiveness and high normalization weight should have a higher score
+    # High desperation score (i.e., very intense fires that won't easily be extinguished) should be lower
+    scores = inverse_normalized_distances * effectivity_score * normalized_weights / (desperation_score + 0.001)
+
+    # Selection of the fire task with the highest score
+    selected_task_index = np.argmax(scores)
+
+    return selected_task_index
+```

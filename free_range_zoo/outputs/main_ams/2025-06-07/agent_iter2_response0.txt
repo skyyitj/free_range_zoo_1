@@ -1,0 +1,14 @@
+/opt/anaconda3/envs/three12/lib/python3.12/site-packages/torch/nested/__init__.py:109: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. We recommend specifying layout=torch.jagged when constructing a nested tensor, as this layout receives active development, has better operator coverage, and works with torch.compile. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/aten/src/ATen/NestedTensorImpl.cpp:182.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+workspace_dir: /Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/outputs/main_ams/2025-06-10
+Traceback (most recent call last):
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/experiments/train.py", line 110, in <module>
+    agent_name: agents[agent_name].act(action_space=env.action_space(agent_name))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 107, in act
+    maximum_index = single_agent_policy(agent_pos, agent_fire_power, agent_suppressant_num, other_agents_pos,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/theone/PycharmProjects/free_range_zoo_1/free_range_zoo/envs/wildfire/baselines/generated_agent.py", line 174, in single_agent_policy
+    suppression_effectiveness = agent_fire_reduction_power * agent_supressant_num / (fire_intensities + 1e-6)
+                                                                                     ~~~~~~~~~~~~~~~~~^~~~~~
+TypeError: can only concatenate list (not "float") to list

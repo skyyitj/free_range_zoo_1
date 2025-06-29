@@ -1,0 +1,64 @@
+Here's the implementation of the `single_agent_policy` function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                    # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+
+    Returns:
+        int: The index of the selected fire task (0 to num_tasks-1)
+    """
+    num_tasks = len(fire_pos)
+    scores = []
+
+    # Tunable temperatures for scaling normalized components
+    distance_temperature = 10.0
+    intensity_temperature = 2.0
+    suppressant_temperature = 2.0
+    
+    for i in range(num_tasks):
+        # Calculate distance from this agent to the fire location
+        fire_task_pos = fire_pos[i]
+        distance = ((agent_pos[0] - fire_task_pos[0]) ** 2 + (agent_pos[1] - fire_task_pos[1]) ** 2) ** 0.5
+
+        # Distance component: Favor closer fires, normalize with an exponential transformation
+        distance_score = np.exp(-distance / distance_temperature)
+
+        # Intensity component: Higher intensity fires are more critical
+        fire_intensity = fire_intensities[i]
+        intensity_score = np.exp(fire_intensity / intensity_temperature)
+
+        # Suppressant availability component: Prioritize tasks that fit the agent's suppressant capacity
+        estimated_remaining_fire = fire_intensity - (agent_fire_reduction_power * agent_suppressant_num)
+        if estimated_remaining_fire < 0:  # Prefer tasks that can be fully extinguished
+            suppressant_score = np.exp(agent_suppressant_num / suppressant_temperature)
+        else:  # Penalize tasks that can't be fully extinguished
+            suppressant_score = np.exp(-estimated_remaining_fire / suppressant_temperature)
+
+        # Reward weight component: Multiply by prioritization weight of the fire task
+        weight_component = fire_putout_weight[i]
+
+        # Combine weighted components
+        total_score = weight_component * (distance_score + intensity_score + suppressant_score)
+        scores.append(total_score)
+
+    # Choose the fire task with the highest score
+    chosen_task = int(np.argmax(scores))
+    return chosen_task
+```

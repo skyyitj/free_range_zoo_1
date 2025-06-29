@@ -1,0 +1,51 @@
+```python
+def single_agent_policy(
+    agent_pos: Tuple[float, float], 
+    agent_fire_reduction_power: float,
+    agent_suppressant_num: float, 
+    other_agents_pos: List[Tuple[float, float]], 
+    fire_pos: List[Tuple[float, float]], 
+    fire_levels: List[int], 
+    fire_intensities: List[float],
+    fire_putout_weight: List[float]
+) -> int:
+    num_tasks = len(fire_pos)
+    best_task_index = -1
+    highest_score = float('-inf')
+    
+    # Adjust temperature parameters based on performance reflections
+    distance_temp = 2.0  # changed from 5.0; less smear for distance importance
+    effectiveness_temp = 0.2  # changed from 0.1; allows greater emphasis on high effectiveness
+    importance_temp = 0.3  # changed from 0.5; increases importance weighting
+    
+    # New parameter to balance resource management
+    suppressant_use_temp = 1.0
+
+    for task_index in range(num_tasks):
+        fire = fire_pos[task_index]
+        distance = np.sqrt((agent_pos[0] - fire[0])**2 + (agent_pos[1] - fire[1])**2)
+        importance_weight = fire_putout_weight[task_index]
+
+        min_eff_required = fire_intensities[task_index] / agent_fire_reduction_power
+        # Calculating an effective suppressant use that balances intensity reduction and resource saving
+        effective_suppressant_use = min(agent_suppressant_num, min_eff_required)
+        
+        if effective_suppressant_use < 1: # Ensuring the agent can have a meaningful impact
+            continue
+
+        potential_effectiveness = agent_fire_reduction_power * effective_suppressant_use
+        
+        # Revised scoring
+        task_score = (
+            -np.log1p(distance / distance_temp) * 2.0 +  # reduce distance influence slightly
+            np.log1p(potential_effectiveness / effectiveness_temp) * 3.5 +  # increased influence of effectiveness
+            np.log1p(importance_weight / importance_temp) * 5.0 +  # task importance remains crucial
+            -np.log1p(effective_suppressant_use / suppressant_use_temp) * 2.5  # penalize excessive suppressant use
+        )
+        
+        if task_score > highest_score:
+            highest_score = task_score
+            best_task_index = task_index
+
+    return best_task_index
+```

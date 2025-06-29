@@ -1,0 +1,69 @@
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              
+    agent_fire_reduction_power: float,           
+    agent_suppressant_num: float,                
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], 
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         
+    fire_levels: List[int],                      
+    fire_intensities: List[float],               
+    fire_putout_weight: List[float],             
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    # Initialize scores for each fire task
+    task_scores = []
+
+    # Temperature parameters for normalization
+    distance_temp = 10.0
+    intensity_temp = 5.0
+    priority_temp = 3.0
+
+    # Loop through all fire tasks
+    for idx in range(len(fire_pos)):
+        # Extract fire task information
+        fire_y, fire_x = fire_pos[idx]
+        fire_intensity = fire_intensities[idx]
+        fire_priority = fire_putout_weight[idx]
+        fire_level = fire_levels[idx]
+
+        # Calculate distance between agent and fire task
+        agent_y, agent_x = agent_pos
+        distance = ((agent_y - fire_y) ** 2 + (agent_x - fire_x) ** 2) ** 0.5
+
+        # Normalize distance (lower distance = higher score)
+        distance_score = np.exp(-distance / distance_temp)
+
+        # Normalize fire intensity (higher intensity = higher score)
+        intensity_score = np.exp(fire_intensity / intensity_temp)
+
+        # Normalize fire priority (higher priority = higher score)
+        priority_score = np.exp(fire_priority / priority_temp)
+
+        # Calculate remaining fire after suppression
+        potential_suppression = agent_fire_reduction_power * agent_suppressant_num
+        remaining_fire = max(fire_intensity - potential_suppression, 0)
+
+        # Penalize fires that are hard to extinguish (higher remaining fire = lower score)
+        extinguishability_score = np.exp(-remaining_fire / intensity_temp)
+
+        # Final score for the fire task (weighted sum of components)
+        total_score = (
+            priority_score * 1.5 +  # Higher weight for priority
+            intensity_score * 1.2 + # Slightly higher weight for intensity
+            distance_score * 1.0 +  # Weight for proximity
+            extinguishability_score * 1.0  # Weight for suppressibility
+        )
+        
+        # Append computed score to the task_scores list
+        task_scores.append(total_score)
+
+    # Select the fire task with the highest score
+    best_task_idx = int(np.argmax(task_scores))
+
+    return best_task_idx
