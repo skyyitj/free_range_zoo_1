@@ -1,0 +1,2 @@
+iter,best_sample_idx,best_success_idx,total_success_idx,row_range
+iter:0,best_sample_idx: 0, best_success_idx: 0, total_success_idx: 0, csv_row_range: 0-2

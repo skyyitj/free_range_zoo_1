@@ -6,6 +6,8 @@ from free_range_zoo.utils.agent import Agent
 from math import sqrt
 from typing import Tuple, List
 import numpy as np
+from typing import List, Tuple
+from scipy.spatial import distance
 
 class GenerateAgent(Agent):
     """Agent that always fights the strongest available fire."""
@@ -140,10 +142,6 @@ class GenerateAgent(Agent):
                 self.argmax_store[batch][element] = self.fires[batch][element]
                 
 
-import numpy as np
-from typing import List, Tuple
-from scipy.spatial import distance
-
 def single_agent_policy(
     # === Agent Properties ===
     agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
@@ -155,37 +153,55 @@ def single_agent_policy(
 
     # === Fire Task Information ===
     fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
-    fire_levels: List[int],                      # Current intensity level of each fire
+    fire_levels: List[int],                     # Current intensity level of each fire
     fire_intensities: List[float],               # Current intensity value of each fire task
 
     # === Task Prioritization ===
     fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
 ) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+    
+    # Temperature variables for score components
+    intensity_temperature = 5  # Controls sensitivity to fire intensity
+    weight_temperature = 5     # Controls sensitivity to reward weight
+    distance_temperature = 2   # Controls sensitivity to distance-based scoring
+    
+    # Compute scores for each fire task
+    num_tasks = len(fire_pos)
+    task_scores = []
 
-    num_tasks = len(fire_levels)
-    scores = np.zeros(num_tasks)
+    for i in range(num_tasks):
+        # Extract fire properties
+        fire_intensity = fire_intensities[i]
+        fire_reward_weight = fire_putout_weight[i]
+        fire_location = fire_pos[i]
 
-    can_put_out_fire = agent_suppressant_num * agent_fire_reduction_power
-
-    # Temperatures
-    putout_temperature = 0.2
-    level_temperature = 0.1
-    intensity_temperature = 0.25 
-    distance_temperature = 0.1 
-
-    for task in range(num_tasks):
-
-        # calculate the euclidean distance between fire and agent
-        fire_distance = distance.euclidean(agent_pos, fire_pos[task])
-
-        # scoring function based on the weight of the fire, distance to the fire
-        # intensity of the fire and suppressants left with the agent
-        scores[task] = (
-            (fire_putout_weight[task]) * np.exp(-(fire_levels[task] / can_put_out_fire) * putout_temperature) +
-            can_put_out_fire * np.exp(-fire_intensities[task] / can_put_out_fire * intensity_temperature) -
-            fire_distance * np.exp(fire_distance * distance_temperature)
+        # Distance from agent to fire
+        distance = np.linalg.norm(
+            [agent_pos[0] - fire_location[0], agent_pos[1] - fire_location[1]]
+        )
+        
+        # Compute suppression feasibility: estimated remaining fire intensity
+        expected_remaining_intensity = max(
+            fire_intensity - agent_fire_reduction_power * agent_suppressant_num, 0
+        )
+        
+        # Transform components to normalize their impact
+        normalized_intensity = np.exp(-expected_remaining_intensity / intensity_temperature)
+        normalized_reward = np.exp(fire_reward_weight / weight_temperature)
+        normalized_distance = np.exp(-distance / distance_temperature)
+        
+        # Score combines fire intensity, reward weight, and proximity
+        task_score = (
+            normalized_intensity * normalized_reward * normalized_distance
         )
 
-    # Return task index with maximum score
-    max_score_task = np.argmax(scores)
-    return max_score_task
+        task_scores.append(task_score)
+
+    # Choose the task with the highest score
+    best_task_idx = int(np.argmax(task_scores))
+    
+    return best_task_idx

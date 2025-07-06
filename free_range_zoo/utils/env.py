@@ -137,6 +137,36 @@ class BatchedAECEnv(ABC, AECEnv):
         self.environment_task_count = torch.empty((self.parallel_envs, ), dtype=torch.int32, device=self.device)
         self.agent_task_count = torch.empty((self.num_agents, self.parallel_envs), dtype=torch.int32, device=self.device)
 
+        # 新增：为每个并行环境分配唯一csv文件名（只检查最新的idx.csv）
+        if self.log_directory is not None:
+            self._current_log_filenames = []
+            for i in range(self.parallel_envs):
+                # 找到最大的已存在idx
+                max_existing_idx = i - 1
+                while os.path.exists(os.path.join(self.log_directory, f'{max_existing_idx + 1}.csv')):
+                    max_existing_idx += 1
+                
+                # 只检查最新的文件
+                if max_existing_idx >= i:
+                    file_path = os.path.join(self.log_directory, f'{max_existing_idx}.csv')
+                    try:
+                        with open(file_path, 'r') as f:
+                            line_count = sum(1 for _ in f)
+                        # 如果最新文件只有≤2行，则覆盖它
+                        if line_count <= 2:
+                            idx = max_existing_idx
+                        else:
+                            idx = max_existing_idx + 1
+                    except:
+                        # 如果文件读取失败，覆盖最新文件
+                        idx = max_existing_idx
+                else:
+                    # 没有已存在的文件，使用初始idx
+                    idx = i
+                
+                filename = f'{idx}.csv'
+                self._current_log_filenames.append(filename)
+
     @torch.no_grad()
     def reset_batches(
         self,
@@ -265,12 +295,15 @@ class BatchedAECEnv(ABC, AECEnv):
             df = pd.concat([df, extra], axis=1)
 
         df['description'] = self.log_description
-
         for i in range(self.parallel_envs):
+            if hasattr(self, '_current_log_filenames') and self._current_log_filenames:
+                filename = self._current_log_filenames[i]
+            else:
+                filename = f'{i}.csv'
             df.iloc[[i]].to_csv(
-                os.path.join(self.log_directory, f'{i}.csv'),
-                mode='w' if not self._are_logs_initialized else 'a',
-                header=not self._are_logs_initialized,
+                os.path.join(self.log_directory, filename),
+                mode='w' if reset else 'a',
+                header=reset,
                 index=False,
                 na_rep="NULL",
             )

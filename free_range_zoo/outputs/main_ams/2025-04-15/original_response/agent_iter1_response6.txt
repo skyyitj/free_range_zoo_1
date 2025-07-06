@@ -1,7 +1,0 @@
-Considering the policy evaluation metrics, the policy function performed reasonably well in minimizing the Used Suppressant and maximizing the Suppressant Efficiency while maintaining a moderate average in terms of Rewards. However, it performed poorly in terms of reducing the Average Burning Number and increasing the Average Putout Number. Therefore, the policy function needs modification.
-
-In order to refine the task selection by the agents, we first modify the level_temperature and distance_temperature parameters. The level_temperature, associated with fire_levels, will be decreased, enabling the agent to focus more on fires with larger fire levels. The distance_temperature will also be decreased to minimize the effect of distance in task selection and enable the agent to focus on fires regardless of the distance.
-
-Additionally, the fire_intensities and agent_suppressant_num are influential factors that should be considered in task selection. The policy function will be modified to prioritize tasks that the agent can fully suppress with its available suppressant. Adding this new policy component will increase Suppressant Efficiency and decrease the Burning Number.
-
-Here is the revised the policy function:

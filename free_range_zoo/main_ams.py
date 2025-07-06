@@ -22,11 +22,13 @@ FRZ_ROOT = os.getcwd()
 # ISAAC_ROOT_DIR = f"{EUREKA_ROOT_DIR}/../isaacgymenvs/isaacgymenvs"
 import openai
 
-# openai.api_key = "*************************"
-# openai.api_base = "https://xiaoai.plus/v1"
+# openai.api_key = "sk-HWSFGUR4jDW372LXbeI6e3s78b10nNluxRzoBMlAp4hAZGqV"
+# openai.api_base = "https://taobao.getgoapi.com/v1"
 openai.api_base = "https://api.lqqq.ltd/v1"
-openai.api_key = "**********************"
-
+openai.api_key = "sk-ZyDHIVttk1Bkc3Tg75D3129371584a369400868297B82dCa"
+# 计算CSV文件中的行号范围
+tests_per_case = 3
+runs_per_case = 1
 
 
 def extract_code_from_response(response: str) -> str:
@@ -76,6 +78,7 @@ def main(cfg):
     initial_user = file_to_string(f'{prompt_dir}/initial_user.txt')
     policy_signature = file_to_string(f'{prompt_dir}/policy_signature.txt')
     policy_feedback = file_to_string(f'{prompt_dir}/policy_feedback.txt')
+    step_information = file_to_string(f'{prompt_dir}/step_information.txt')
     execution_error_feedback = file_to_string(f'{prompt_dir}/execution_error_feedback.txt')
     metric_description = file_to_string(f'{prompt_dir}/metric_description.txt')
     initial_system = initial_system.format(policy_signature=policy_signature) + code_output_tip
@@ -106,10 +109,16 @@ def main(cfg):
     # 初始化messages，初始阶段只保留全局信息
     messages = global_messages.copy()
     with open(f"best_sample_idx.txt", "w") as f:
-        f.write(f"best_sample_idx\n")
+        f.write(f"iter,best_sample_idx,best_success_idx,total_success_idx,row_range\n")
+
+    # 初始化历史成功案例记录文件
+    success_history_file = "success_history.txt"
+    if not os.path.exists(success_history_file):
+        with open(success_history_file, "w") as f:
+            f.write("iteration,success_count\n")
 
     for iter in range(cfg.iteration):
-        num1 = 0
+        #num1 = 0
         num_success = 0
         
         responses = []
@@ -150,7 +159,7 @@ def main(cfg):
         agent_files = []
 
         for response_id in range(cfg.sample):
-            num1 = num1 + 1
+            #num1 = num1 + 1
             response_cur = responses[response_id]["message"]["content"]
             code_string = extract_code_from_response(response_cur)
             functions_code = code_string.strip()
@@ -208,6 +217,7 @@ def main(cfg):
         os.makedirs(baseline_dir, exist_ok=True)
         all_rewards = []
         all_contents = []
+
         for response_id in range(len(agent_files)):
             rl_filepath = f"agent_iter{iter}_response{response_id}.txt"
 
@@ -217,6 +227,7 @@ def main(cfg):
             traceback_msg = filter_traceback(stdout_str)  # 查找是否有traceback信息
             content = ''
             if traceback_msg == '':
+
                 num_success = num_success + 1
                 # 替换tensorboard相关代码
                 content += policy_feedback.format(metric_description=metric_description)
@@ -250,18 +261,86 @@ def main(cfg):
                     # 检查是否到达 "training process finished!" 行
                     if "training process finished!" in line:
                         break
-
-                content += code_feedback 
             else:
                 final_rewards = -float('inf')
                 content += execution_error_feedback.format(traceback_msg=traceback_msg)
             all_rewards.append(final_rewards)
             all_contents.append(content)
 
+        #print("num_success:", num_success)
         best_sample_idx = np.argmax(np.array(all_rewards))
+        
+        # 计算最佳样本在成功案例中的序号，以便查找它在 csv 中的序列号
+        success_count = 0
+        best_success_idx = -1
+        for i in range(len(all_rewards)):
+            if all_rewards[i] > -float('inf'):  # 成功案例
+                if i == best_sample_idx:
+                    best_success_idx = success_count
+                success_count += 1
+        
+        # 保存当前迭代的成功案例数
+        with open(success_history_file, "a") as f:
+            f.write(f"{iter},{num_success}\n")
+        
+        #加入每一步的数据反馈 查询 [之前每次 iter 的成功案例总数*3*测试次数+当前案例索引乘3乘测试次数，+3 乘 测试次数-1]
+
+        # 读取历史成功案例数据
+        total_previous_success = 0
+        if os.path.exists(success_history_file):
+            with open(success_history_file, "r") as f:
+                lines = f.readlines()
+                for line in lines[1:]:  # 跳过标题行
+                    if line.strip():
+                        prev_iter, prev_success = map(int, line.strip().split(','))
+                        if prev_iter < iter:  # 只计算之前迭代的成功案例
+                            total_previous_success += prev_success
+        
+        # 计算最佳样本在所有成功案例中的总序号
+        total_success_idx = total_previous_success + best_success_idx
+        
+        # 计算CSV文件中的行号范围
+        total_runs_per_case = tests_per_case * runs_per_case
+        start_row = total_success_idx * total_runs_per_case
+        end_row = start_row + total_runs_per_case - 1
+        
+        # 读取CSV文件内容并转换为文本格式
+        step_content = ""
+        try:
+            # 读取从start_row.csv到end_row.csv的多个文件
+            for csv_idx in range(start_row, end_row + 1):
+                csv_file_path = f"/Users/theone/PycharmProjects/free_range_zoo_1/trainlog_outputs/{csv_idx}.csv"#记得改一下
+                if os.path.exists(csv_file_path):
+                    import pandas as pd
+                    df = pd.read_csv(csv_file_path)
+                    if len(df) > 0:
+                        step_content += f"\n=== test{csv_idx}.csv ===\n"
+
+                        # 添加所有列的数据摘要
+                        for col in df.columns:
+                            step_content += f"{col}: {df[col].tolist()}\n"
+                        
+                        step_content += f"=== test{csv_idx}.csv 结束 ===\n"
+                    else:
+                        step_content += f"\nCSV文件为空: {csv_file_path}\n"
+                else:
+                    step_content += f"\nCSV文件不存在: {csv_file_path}\n"
+        except Exception as e:
+            step_content += f"\nCSV数据读取失败: {str(e)}\n"
+        
+        #把这部分写入 step_content
+
+        # 读取对应的CSV数据并添加反馈
+
+        # 写入每一步的信息
         with open(f"best_sample_idx.txt", "a") as f:
-            f.write(f"best_sample_idx: {best_sample_idx}\n")
+            f.write(f"iter:{iter},best_sample_idx: {best_sample_idx}, best_success_idx: {best_success_idx}, total_success_idx: {total_success_idx}, csv_row_range: {start_row}-{end_row}\n")
+    
         best_content = all_contents[best_sample_idx]
+        best_content += step_information
+        best_content += step_content
+        #print(step_content)
+        best_content += code_feedback
         best_agent_code = responses[best_sample_idx]["message"]["content"]
         # contents += content
         # contents += f"The success rate for this iteration is {num_success}/{num1}\n"

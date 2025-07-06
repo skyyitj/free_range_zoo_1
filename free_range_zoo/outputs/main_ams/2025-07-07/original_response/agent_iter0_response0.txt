@@ -1,0 +1,85 @@
+Here is the implementation of the policy function:
+
+```python
+def single_agent_policy(
+    # === Agent Properties ===
+    agent_pos: Tuple[float, float],              # Current position of the agent (y, x)
+    agent_fire_reduction_power: float,           # How much fire the agent can reduce
+    agent_suppressant_num: float,                # Amount of fire suppressant available
+
+    # === Team Information ===
+    other_agents_pos: List[Tuple[float, float]], # Positions of all other agents [(y1, x1), (y2, x2), ...]
+
+    # === Fire Task Information ===
+    fire_pos: List[Tuple[float, float]],         # Locations of all fires [(y1, x1), (y2, x2), ...]
+    fire_levels: List[int],                     # Current intensity level of each fire
+    fire_intensities: List[float],               # Current intensity value of each fire task
+
+    # === Task Prioritization ===
+    fire_putout_weight: List[float],             # Priority weights for fire suppression tasks
+) -> int:
+    """
+    Choose the optimal fire-fighting task for a single agent.
+    """
+    import numpy as np
+    
+    # Temperature variables for score components
+    intensity_temperature = 5  # Controls sensitivity to fire intensity
+    weight_temperature = 5     # Controls sensitivity to reward weight
+    distance_temperature = 2   # Controls sensitivity to distance-based scoring
+    
+    # Compute scores for each fire task
+    num_tasks = len(fire_pos)
+    task_scores = []
+
+    for i in range(num_tasks):
+        # Extract fire properties
+        fire_intensity = fire_intensities[i]
+        fire_reward_weight = fire_putout_weight[i]
+        fire_location = fire_pos[i]
+
+        # Distance from agent to fire
+        distance = np.linalg.norm(
+            [agent_pos[0] - fire_location[0], agent_pos[1] - fire_location[1]]
+        )
+        
+        # Compute suppression feasibility: estimated remaining fire intensity
+        expected_remaining_intensity = max(
+            fire_intensity - agent_fire_reduction_power * agent_suppressant_num, 0
+        )
+        
+        # Transform components to normalize their impact
+        normalized_intensity = np.exp(-expected_remaining_intensity / intensity_temperature)
+        normalized_reward = np.exp(fire_reward_weight / weight_temperature)
+        normalized_distance = np.exp(-distance / distance_temperature)
+        
+        # Score combines fire intensity, reward weight, and proximity
+        task_score = (
+            normalized_intensity * normalized_reward * normalized_distance
+        )
+
+        task_scores.append(task_score)
+
+    # Choose the task with the highest score
+    best_task_idx = int(np.argmax(task_scores))
+    
+    return best_task_idx
+``` 
+
+### Explanation:
+1. **Score Calculation**: 
+   - For each fire task, the score is calculated based on three components:
+     - **Remaining Fire Intensity**: Fires with lower expected remaining intensity are prioritized.
+     - **Reward Weight**: Fires with higher reward weights are prioritized.
+     - **Distance**: Fires closer to the agent are prioritized.
+
+2. **Normalization**:
+   - Each component is transformed using a temperature parameter and exponential scaling to restrict values to a normalized range.
+
+3. **Scoring Criteria**:
+   - The combined score is the product of the normalized intensity, reward, and distance. This ensures that the selection reflects a balanced prioritization.
+
+4. **Selection**:
+   - The task with the highest combined score is selected for suppression.
+
+This strategy optimally balances fire suppression and resource efficiency while considering task prioritization and proximity.
